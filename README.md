@@ -51,6 +51,14 @@ Di HP, navigasi ada di bawah: Today, Market, Analysis, Signals, dan **More** unt
 - **Alert Telegram** tetap dikirim oleh workflow GitHub Actions (`regime-radar-satu-file.yml`) setiap 4 jam, walaupun halaman ini tertutup.
 - Opsional: aktifkan **notifikasi browser** di Settings untuk alert selama halaman terbuka.
 
+## 3a. Data realtime (WebSocket)
+Aplikasi membuka dua sambungan WebSocket ke stream data pasar publik Binance. Keduanya hanya membaca data, tanpa akun dan tanpa API key.
+- **Harga:** stream `!miniTicker@arr` membawa harga terakhir dan perubahan 24 jam semua pair, kira-kira setiap detik. Stream ini menggerakkan tabel, P&L live, dan alert TP/SL/masuk zona.
+- **Candle:** setiap chart yang sedang tampil (1D/4H/1H/15m) berlangganan stream `kline` untuk koin dan timeframe-nya. Candle yang sedang terbentuk (high/low/close/volume) dan garis EMA bergerak tick demi tick. Candle baru langsung muncul saat candle sebelumnya tutup. Langganan otomatis berpindah saat Anda mengganti timeframe atau membuka/menutup chart (maksimal 40 stream).
+- **Status** tampil di baris Live: *WebSocket · prices + candles*, *WebSocket · prices*, atau *REST polling*. Bila WebSocket terputus, aplikasi otomatis kembali ke polling REST setiap 15 detik dan mencoba menyambung ulang.
+- Saat tab disembunyikan, stream candle ditutup untuk menghemat baterai dan kuota, lalu dibuka lagi saat tab tampil kembali.
+- **Sinyal BUY tetap dihitung dari candle 4H yang sudah tutup.** WebSocket membuat tampilan dan alert lebih cepat, tetapi tidak mengubah aturan sinyal.
+
 ## 4. Data & backup
 - Semua data ada di `localStorage` browser. Ganti browser/HP = data kosong.
 - **Settings → Data in this browser → Download backup** untuk menyimpan file JSON; **Restore from backup** untuk memulihkannya di perangkat lain.
