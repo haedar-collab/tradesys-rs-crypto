@@ -2409,12 +2409,12 @@ function poolUniverse(){ const rs=((LAST&&LAST.rs)||(AUTORES&&AUTORES.rs)||[]).f
 async function ensurePool(){
   if(!POOLLOADED){ POOLLOADED=true; try{ if(db){ const d=await db.doc("meta/pooledbt").get(); if(d.exists){ const cached=d.data(); POOL=cached&&cached.validationVersion===2?cached:null; } } }catch(e){} paintPool(); }
   const reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
-  if(POOL&&POOL.validationVersion===2&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
+  if(POOL&&POOL.validationVersion===2&&!POOL.error&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
   runPool(reg);
 }
 async function runPool(reg){
   if(POOLJOB||!mcp) return; const syms=poolUniverse(); if(syms.length<10) return;
-  POOLJOB={done:0,total:syms.length,accepted:0,rejected:[]}; paintPool();
+  POOL=null; POOLJOB={done:0,total:syms.length,accepted:0,rejected:[]}; paintPool();
   try{
     const b=await btcForBt(), byCoin={}; let from=Infinity,to=0,idx=0;
     const worker=async()=>{ while(idx<syms.length){
