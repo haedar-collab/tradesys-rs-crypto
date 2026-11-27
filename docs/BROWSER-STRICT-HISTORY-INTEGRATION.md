@@ -7,7 +7,7 @@ The integration is deliberately limited to `runCoinBt(sym)`, the per-coin 4H bac
 
 ## Fail-safe behavior
 - Requires 4,500 contiguous, valid, closed 4H candles.
-- Requests up to five Binance pages of at most 1,000 candles, moving backward with `endTime = oldestOpenTime - 1`.
+- The first request sets inclusive Binance `endTime` to the last fully closed 4H candle (`floor(now / 4h) * 4h - 1`), excluding the currently forming candle. Subsequent pages move backward with `endTime = oldestOpenTime - 1`.
 - Retries a failed page once by default.
 - Blocks the backtest on fetch failure, short/empty history before the target, malformed rows, open candles, duplicate/out-of-order candles, gaps, page overlap, or cursor failure.
 - On any rejected history, stores a diagnostic error/status in the per-coin backtest result and does not call `E.backtestCoin()`.
