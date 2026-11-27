@@ -688,7 +688,7 @@ button.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
     <ul class="gates" id="gGates"></ul>
   </section>
   <section class="panel view" data-view="guide" aria-labelledby="h-gpipe">
-    <div class="panel-head"><h2 id="h-gpipe">Where each coin stands</h2><span class="muted small">Coins move left to right. Only the last column is an entry. Tap a coin for its chart.</span></div>
+    <div class="panel-head"><h2 id="h-gpipe">Where each coin stands</h2><span class="muted small">The four action states match the Analysis and Watchlist tabs. Enter now still requires clear trading permission. Tap a coin for its chart.</span></div>
     <div class="pipe" id="gPipe"><div class="empty">Appears after a scan.</div></div>
     <div id="gOut" class="small muted" style="margin-top:10px"></div>
   </section>
@@ -733,7 +733,7 @@ button.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
     <div class="panel-head"><h2 id="h-smc">Trade plans</h2><span class="muted small" id="smcMeta">Daily bias · 4H plan · 1H trigger</span></div>
     <form class="actions oda-form" id="odaForm" autocomplete="off"><input id="odaInput" type="text" placeholder="Analyse any pair, e.g. ARBUSDT" aria-label="Analyse any USDT pair" spellcheck="false"><button type="submit">Analyse</button><span class="muted small" id="odaMsg" aria-live="polite"></span></form>
     <div id="smcPlan"><div class="empty">Plans appear after a scan.</div></div>
-    <p class="foot" style="margin-top:8px">Plan levels are locked per zone and do not change between scans. Enter only when the status turns BUY.</p>
+    <p class="foot" style="margin-top:8px">Plan levels are locked per zone and do not change between scans. The shared Action status must read Enter now, and trading permission must be clear before taking a signal.</p>
         <div style="margin-top:14px" class="adv"><h3 style="margin-bottom:8px">All pairs from the auto-scan</h3><div id="smcAuto"><div class="empty">SMC summary for all RS leaders appears after the auto-scan.</div></div></div>
     <div style="margin-top:14px" class="adv"><h3 style="margin-bottom:8px">Zone watchlist</h3><div id="zoneWatch"><div class="empty">Zones of WAIT plans appear after a scan.</div></div></div>
     <p class="foot adv" style="margin-top:10px">The auto-scan alerts when price enters a zone; then wait for a 1H or 4H confirmation. BUY (Enter now): price in the zone with confirmation; it is added to Active signals under the SMC playbook. WAIT: zone too far, no confirmation yet, R:R too low or structure not supportive; the plan is shown for reference. AVOID: 4H structure bearish and Daily bias not bullish. Technical analysis, zone quality and backtests are information only.</p>
@@ -869,7 +869,7 @@ button.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
   <section class="panel view adv" data-view="pasar" aria-labelledby="h-rs">
     <div class="panel-head"><h2 id="h-rs">Relative strength vs BTC</h2><span class="muted small" id="rsMeta"></span></div>
     <div class="tbl-wrap"><table class="wide">
-      <thead><tr><th class="l">Pair</th><th>Rank</th><th>RS score</th><th>7D vs BTC</th><th>30D vs BTC</th><th>90D vs BTC</th><th class="l">COIN/BTC</th><th class="l">&gt; 50 EMA</th><th class="l">OBV</th><th>Float</th><th>24h vol (USDT)</th><th class="l">Status</th></tr></thead>
+      <thead><tr><th class="l">Pair</th><th>Rank</th><th>RS score</th><th>7D vs BTC</th><th>30D vs BTC</th><th>90D vs BTC</th><th class="l">COIN/BTC</th><th class="l">&gt; 50 EMA</th><th class="l">OBV</th><th>Float</th><th>24h vol (USDT)</th><th class="l">RS filter</th></tr></thead>
       <tbody id="rsBody"><tr><td colspan="12" class="muted">RS ranking appears after a scan.</td></tr></tbody>
     </table></div>
     <details><summary id="exclSum">Excluded pairs</summary><div id="exclList" class="muted small" style="margin-top:8px"></div></details>
@@ -2974,7 +2974,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-ly]"); if
   document.querySelectorAll("[data-ly]").forEach(x=>x.setAttribute("aria-pressed",LAYERS[x.dataset.ly]?"true":"false")); });
 function renderZones(res){
   const z=(res.zoneWatch||[]).map(x=>{ const px=lp(x.sym,x.price); return Object.assign({},x,{price:px,inZone:px>=x.lo&&px<=x.hi,distPct:px>x.hi?(px-x.hi)/px*100:0}); }).sort((a,b)=>a.distPct-b.distPct);
-  $("zoneWatch").innerHTML=z.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th class="l">Zone</th><th>Zone low</th><th>Zone high</th><th>Price</th><th>24h %</th><th>Distance to zone</th><th class="l">Status</th></tr></thead><tbody>${z.map(x=>`<tr><td><b>${esc(x.sym.replace("USDT",""))}</b></td><td class="l">${esc(x.kind)}</td><td class="num">${fp(x.lo)}</td><td class="num">${fp(x.hi)}</td><td class="num">${fp(x.price)}</td><td class="num">${chgHtml(x.sym)}</td><td class="num">${x.inZone?"inside":fpct(-x.distPct)}</td><td class="l">${x.inZone?'<span class="chip good">In zone · await confirmation</span>':x.distPct<=5?'<span class="chip warn">Near</span>':'<span class="chip">Far</span>'}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No zones on watch.</div>`;
+  $("zoneWatch").innerHTML=z.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th class="l">Zone</th><th>Zone low</th><th>Zone high</th><th>Price</th><th>24h %</th><th>Distance to zone</th><th class="l">Zone proximity</th></tr></thead><tbody>${z.map(x=>`<tr><td><b>${esc(x.sym.replace("USDT",""))}</b></td><td class="l">${esc(x.kind)}</td><td class="num">${fp(x.lo)}</td><td class="num">${fp(x.hi)}</td><td class="num">${fp(x.price)}</td><td class="num">${chgHtml(x.sym)}</td><td class="num">${x.inZone?"inside":fpct(-x.distPct)}</td><td class="l">${x.inZone?'<span class="chip good">In zone · await confirmation</span>':x.distPct<=5?'<span class="chip warn">Near</span>':'<span class="chip">Far</span>'}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No zones on watch.</div>`;
 }
 function renderSMC(res){
   renderZones(res); renderSmcPlan(); try{ renderWatch(); }catch(e){} scanCandidates().catch(()=>{});
