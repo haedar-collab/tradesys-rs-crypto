@@ -2149,7 +2149,7 @@ const OLDVIEW={regime:"pasar",screener:"pasar",alert:"dashboard",review:"jurnal"
 let PLAN=Object.assign({},E.PLAN_DEFAULTS), planDirty=false, CHECKED={}, REVPER="week", REVIEWS=[], paramWarned=false;
 const PLAN_NUM=["targetMonthlyPct","monthlyLossLimitPct","maxConsecSL","cooldownDays","maxTradesPerDay","minTradesForParamChange"], PLAN_TXT=["goal","routine","checklist","exec_trend","exec_meanrev","exec_breakout","exec_panic","exec_smc"];
 const planNow=()=>E.planStatus(SIGNALS,PLAN,CFG.modal);
-const planState=ps=>ps.halted?{key:"halted",label:"TRADING HALTED",tone:"stop",detail:ps.reasons[0]||"Trading plan blocks new positions."}:ps.dayFull?{key:"daily-limit",label:"DAILY LIMIT REACHED",tone:"warn",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions opened today.`}:{key:"clear",label:"CLEAR TO TRADE",tone:"ok",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions today · losing streak ${ps.streak}/${PLAN.maxConsecSL}`};
+const planState=ps=>ps.halted?{key:"halted",label:"TRADING HALTED",tone:"stop",detail:ps.reasons[0]||"Trading plan blocks new positions."}:LAST&&LAST.brake?{key:"circuit-breaker",label:"CIRCUIT BREAKER",tone:"stop",detail:"BTC broke the 20-day support on heavy volume; no new altcoin entries."}:ps.dayFull?{key:"daily-limit",label:"DAILY LIMIT REACHED",tone:"warn",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions opened today.`}:{key:"clear",label:"CLEAR TO TRADE",tone:"ok",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions today · losing streak ${ps.streak}/${PLAN.maxConsecSL}`};
 const checklistItems=()=>String(PLAN.checklist||"").split("\n").map(x=>x.trim()).filter(Boolean);
 
 /* ---------- format ---------- */
@@ -2226,7 +2226,7 @@ function renderTop(){
   const reg=LAST?LAST.regime.reg:(REGIMES[0]&&REGIMES[0].reg);
   if(LAST) $("topPx").textContent=fp(LAST.btcSeries.c[LAST.btcSeries.c.length-1]);
   if(reg){ $("topReg").className="mini-pill r-"+reg; $("topReg").textContent=("REGIME "+reg).toUpperCase(); }
-  const state=planState(planNow()), tp=$("topPlan"); tp.hidden=false; tp.className="mini-pill "+(state.key==="halted"?"r-Downtrend":state.key==="daily-limit"?"r-Kapitulasi":"r-Uptrend"); tp.textContent=state.label;
+  const state=planState(planNow()), tp=$("topPlan"); tp.hidden=false; tp.className="mini-pill "+(state.tone==="stop"?"r-Downtrend":state.key==="daily-limit"?"r-Kapitulasi":"r-Uptrend"); tp.textContent=state.label;
 }
 
 /* ---------- simple / full mode ---------- */
@@ -2587,12 +2587,12 @@ function renderGuide(){
   const act=SIGNALS.filter(s=>effStatus(s)==="baru");
   const gates=[];
   const pstate=planState(ps);
-  gates.push({k:ps.halted?"crit":ps.dayFull?"crit":"good",t:`Trading plan: ${pstate.label}`,d:pstate.detail+(ps.until?` · resumes ${wib(ps.until)}`:"")});
+  gates.push({k:pstate.tone==="stop"?"crit":pstate.tone==="warn"?"warn":"good",t:`Trading permission: ${pstate.label}`,d:pstate.detail+(ps.until?` · resumes ${wib(ps.until)}`:"")});
   gates.push(evr&&evr.level==="high"?{k:"warn",t:`Event risk: US ${evr.active[0].title} ${inH(evr.active[0].at)}`,d:`Entries allowed at ${Math.round(100*evr.sizeMult)}% size until ${CFG.eventHoursAfter||2}h after the release.`}:evr&&evr.level==="medium"?{k:"warn",t:`US ${evr.watch[0].title} ${inH(evr.watch[0].at)}`,d:"Expect extra volatility; size unchanged."}:{k:"good",t:"Event risk: none in the window",d:evr&&evr.known===false?"Calendar unavailable on the last scan.":"No high-impact US release in the next 24h."});
   if(reg) gates.push(reg==="Downtrend"?{k:"warn",t:"Regime: Downtrend",d:"Only RS leaders may be entered, at 50% size."}:reg==="Capitulation"?{k:"warn",t:"Regime: Capitulation",d:"Scale in only on signals; small size."}:{k:"good",t:`Regime: ${E.regName(reg)}`,d:"Normal playbook for this regime."});
   gates.push(act.length?{k:"good",t:`${act.length} entry signal${act.length>1?"s":""} live`,d:act.map(s=>`${s.sym.replace("USDT","")} at ${fp(s.entry)} (valid until ${wib(s.validUntil)})`).join(" · ")}:{k:"muted",t:"No entry signal live",d:"Wait for a 🟢 NEW SIGNAL alert."});
   $("gGates").innerHTML=gates.map(g=>`<li class="g-${g.k}"><span class="dot" aria-hidden="true"></span><div><b>${esc(g.t)}</b><div class="small muted">${esc(g.d)}</div></div></li>`).join("");
-  const can=!ps.halted&&!ps.dayFull;
+  const can=!ps.halted&&!ps.dayFull&&!(LAST&&LAST.brake);
   $("gVerdict").innerHTML=`<div class="vbig ${!can?"vb-stop":act.length?"vb-go":"vb-wait"}" style="margin-bottom:12px"><b>${!can?"NO NEW ENTRIES":act.length?(evr&&evr.level==="high"?"ENTER · REDUCED SIZE":"ENTER: SIGNAL LIVE"):"WAIT"}</b><span>${!can?"The trading plan blocks new positions.":act.length?"Follow the signal card: entry, SL and TP as shown, after the checklist.":"No coin has reached Enter now. Nothing to buy until a 🟢 NEW SIGNAL arrives."}</span></div>`;
   // pipeline
   const rows=smcRows()||[];
@@ -2787,12 +2787,12 @@ document.addEventListener("click",e=>{
 $("btAll").addEventListener("click",async()=>{ const act=SIGNALS.filter(s=>effStatus(s)==="baru"||s.status==="diambil"); if(!act.length){ $("btAllMsg").textContent="No active signals."; return; } $("btAll").disabled=true; for(let k=0;k<act.length;k++){ $("btAllMsg").textContent=`Backtest ${k+1}/${act.length}…`; await runBt(act[k].id); } $("btAllMsg").textContent=`Done: ${act.length} signal${act.length>1?"s":""}`; $("btAll").disabled=false; });
 
 function sigVerdict(s){ return s?E.btVerdict(BTRES[s.id]||s.btSignal,CFG):null; }
-function takeBlock(id){ const ps=planNow(); if(ps.halted) return "Trading halted by the trading plan"; if(ps.dayFull) return `Daily limit of ${PLAN.maxTradesPerDay} new positions reached`;
+function takeBlock(id){ const ps=planNow(); if(ps.halted) return "Trading halted by the trading plan"; if(LAST&&LAST.brake) return "Circuit breaker active: BTC market risk blocks new entries"; if(ps.dayFull) return `Daily limit of ${PLAN.maxTradesPerDay} new positions reached`;
   const n=checklistItems().length, c=CHECKED[id]?CHECKED[id].size:0; return c<n?`Tick ${n-c} more checklist item${n-c>1?"s":""}`:""; }
 function canTake(id){ return takeBlock(id)===""; }
 function renderPlanBar(){
   const ps=planNow(), state=planState(ps), el=$("planBar"), f=x=>x.toFixed(1);
-  el.className="planbar "+(state.key==="halted"?"stop":state.key==="daily-limit"||ps.streak>=PLAN.maxConsecSL-1||ps.monthPct<=-PLAN.monthlyLossLimitPct/2?"warn":"ok");
+  el.className="planbar "+(state.tone==="stop"?"stop":state.key==="daily-limit"||ps.streak>=PLAN.maxConsecSL-1||ps.monthPct<=-PLAN.monthlyLossLimitPct/2?"warn":"ok");
   el.textContent=`${state.label} · ${state.detail} · MTD P/L ${f(ps.monthPct)}% (target ${f(+PLAN.targetMonthlyPct)}%, loss limit −${f(+PLAN.monthlyLossLimitPct)}%)`+(ps.until?` · resumes ${wib(ps.until)}`:"");
 }
 function renderJournal(){
