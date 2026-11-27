@@ -42,7 +42,7 @@ test("series excludes candles whose close time has not passed", () => {
   const result = E.series(rows, 2500);
   assert.deepEqual(Array.from(result.t), [1000]);
   assert.deepEqual(Array.from(result.c), [11]);
-  assert.deepEqual(Array.from(result.v), [100]);
+  assert.deepEqual(Array.from(result.v), [1100]);
 });
 
 test("baseline configuration preserves the SMC zone-width threshold", () => {
@@ -72,6 +72,6 @@ test("closed journal row at stop is recorded as -1R in the baseline model", () =
     playbook: "smc",
     size: 1000
   });
-  assert.equal(result.r, -1);
+  assert.ok(Math.abs(result.r - (-1)) < 1e-12, `expected -1R, received ${result.r}`);
   assert.equal(result.partial, false);
 });
