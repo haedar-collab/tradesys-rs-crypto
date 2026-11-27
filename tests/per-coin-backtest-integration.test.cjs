@@ -35,6 +35,13 @@ test("per-coin history uses the registered Binance Spot klines adapter", () => {
   assert.match(html, /server:BIN, tool:TOOLS\.klines, symbol:sym/);
 });
 
+test("per-coin UI displays strict-history rejection diagnostics", () => {
+  assert.match(html, /History status:/);
+  assert.match(html, /c\.history&&c\.history\.pageCount/);
+  assert.match(html, /c\.history&&c\.history\.receivedCount/);
+  assert.match(html, /c\.history&&c\.history\.targetCandles/);
+});
+
 test("strict history integration leaves pooled backtest entry point present", () => {
   assert.match(html, /async function runPool\(reg\)/);
 });
