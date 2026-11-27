@@ -628,6 +628,10 @@ button.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
       <section class="panel"><div class="panel-head"><h2>Top relative strength</h2><button class="link" data-goto="pasar">Open</button></div><div id="dashRs"></div></section>
       <section class="panel"><div class="panel-head"><h2>Latest alerts</h2><button class="link" data-goto="dashboard" data-scroll="h-log">View all</button></div><div id="dashLog" class="log"></div></section>
     </div>
+    <section class="panel adv" id="poolPanel" aria-labelledby="h-pool" style="margin-top:14px">
+      <div class="panel-head"><div><h2 id="h-pool">Pooled Backtest</h2><span class="muted small" id="poolMeta">Strict history validation · minimum 10 valid coins</span></div><button type="button" class="sm" id="poolRefresh">Refresh pool</button></div>
+      <div data-poolbox="" id="poolBox"><div class="empty">Pooled Backtest starts automatically after a successful scan.</div></div>
+    </section>
   </div>
 
   <div data-view="risiko" class="view">
@@ -2145,6 +2149,7 @@ const OLDVIEW={regime:"pasar",screener:"pasar",alert:"dashboard",review:"jurnal"
 let PLAN=Object.assign({},E.PLAN_DEFAULTS), planDirty=false, CHECKED={}, REVPER="week", REVIEWS=[], paramWarned=false;
 const PLAN_NUM=["targetMonthlyPct","monthlyLossLimitPct","maxConsecSL","cooldownDays","maxTradesPerDay","minTradesForParamChange"], PLAN_TXT=["goal","routine","checklist","exec_trend","exec_meanrev","exec_breakout","exec_panic","exec_smc"];
 const planNow=()=>E.planStatus(SIGNALS,PLAN,CFG.modal);
+const planState=ps=>ps.halted?{key:"halted",label:"TRADING HALTED",tone:"stop",detail:ps.reasons[0]||"Trading plan blocks new positions."}:ps.dayFull?{key:"daily-limit",label:"DAILY LIMIT REACHED",tone:"warn",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions opened today.`}:{key:"clear",label:"CLEAR TO TRADE",tone:"ok",detail:`${ps.takenToday}/${PLAN.maxTradesPerDay} new positions today · losing streak ${ps.streak}/${PLAN.maxConsecSL}`};
 const checklistItems=()=>String(PLAN.checklist||"").split("\n").map(x=>x.trim()).filter(Boolean);
 
 /* ---------- format ---------- */
@@ -2221,7 +2226,7 @@ function renderTop(){
   const reg=LAST?LAST.regime.reg:(REGIMES[0]&&REGIMES[0].reg);
   if(LAST) $("topPx").textContent=fp(LAST.btcSeries.c[LAST.btcSeries.c.length-1]);
   if(reg){ $("topReg").className="mini-pill r-"+reg; $("topReg").textContent=("REGIME "+reg).toUpperCase(); }
-  const ps=planNow(), tp=$("topPlan"); tp.hidden=false; tp.className="mini-pill "+(ps.halted?"r-Downtrend":ps.dayFull?"r-Kapitulasi":"r-Uptrend"); tp.textContent=ps.halted?"TRADING HALTED":ps.dayFull?"DAILY LIMIT HIT":"CLEAR TO TRADE";
+  const state=planState(planNow()), tp=$("topPlan"); tp.hidden=false; tp.className="mini-pill "+(state.key==="halted"?"r-Downtrend":state.key==="daily-limit"?"r-Kapitulasi":"r-Uptrend"); tp.textContent=state.label;
 }
 
 /* ---------- simple / full mode ---------- */
@@ -2332,8 +2337,8 @@ function renderWatch(){
   const rows=list.map(watchRow).sort((a,b)=>(LANE_ORDER[a.lane]-LANE_ORDER[b.lane])||((a.rr?a.rr.rank:1e9)-(b.rr?b.rr.rank:1e9)));
   const name=w=>`${starBtn(w.sym)}<button type="button" class="linkish" data-wopen="${esc(w.sym)}">${esc(w.sym.replace(/USDT$/,""))}<span class="muted">/USDT</span></button>`;
   const px=w=>`${w.price!=null?fp(w.price):"–"}<div class="sub">${chgOf(w.sym)!=null?`<span class="${chgOf(w.sym)>=0?"pos":"neg"}">${fpct(chgOf(w.sym))}</span>`:""}${LIVEQV[w.sym]!=null?` · ${fvol(LIVEQV[w.sym])}`:""}</div>`;
-  el.innerHTML=`<div class="tbl-wrap wl-twrap"><table class="smc-tbl wl-tbl"><thead><tr><th class="l">Coin</th><th>Price · 24h</th><th class="l">RS</th><th class="l">Action</th><th class="l">Entry zone</th><th class="l">Status</th><th></th></tr></thead><tbody>${rows.map(w=>`<tr><td class="l wl-name">${name(w)}</td><td class="num">${px(w)}</td><td class="l">${watchRs(w)}</td><td class="l">${watchAction(w)}</td><td class="l num">${watchZone(w)}</td><td class="l">${watchStatus(w)}</td><td class="r"><button type="button" class="sm" data-wopen="${esc(w.sym)}">Open</button></td></tr>`).join("")}</tbody></table></div>
-  <div class="wl-cards">${rows.map(w=>`<article class="wl-card"><div class="wl-ch"><div class="wl-name">${name(w)}</div><div class="num">${px(w)}</div></div><div class="wl-cg"><span class="label">Action</span><div>${watchAction(w)}</div><span class="label">RS</span><div>${watchRs(w)}</div><span class="label">Entry zone</span><div class="num">${watchZone(w)}</div><span class="label">Status</span><div>${watchStatus(w)}</div></div><button type="button" class="sm" data-wopen="${esc(w.sym)}">Open analysis</button></article>`).join("")}</div>`;
+  el.innerHTML=`<div class="tbl-wrap wl-twrap"><table class="smc-tbl wl-tbl"><thead><tr><th class="l">Coin</th><th>Price · 24h</th><th class="l">RS</th><th class="l">Action</th><th class="l">Entry zone</th><th class="l">Signal state</th><th></th></tr></thead><tbody>${rows.map(w=>`<tr><td class="l wl-name">${name(w)}</td><td class="num">${px(w)}</td><td class="l">${watchRs(w)}</td><td class="l">${watchAction(w)}</td><td class="l num">${watchZone(w)}</td><td class="l">${watchStatus(w)}</td><td class="r"><button type="button" class="sm" data-wopen="${esc(w.sym)}">Open</button></td></tr>`).join("")}</tbody></table></div>
+  <div class="wl-cards">${rows.map(w=>`<article class="wl-card"><div class="wl-ch"><div class="wl-name">${name(w)}</div><div class="num">${px(w)}</div></div><div class="wl-cg"><span class="label">Action</span><div>${watchAction(w)}</div><span class="label">RS</span><div>${watchRs(w)}</div><span class="label">Entry zone</span><div class="num">${watchZone(w)}</div><span class="label">Signal state</span><div>${watchStatus(w)}</div></div><button type="button" class="sm" data-wopen="${esc(w.sym)}">Open analysis</button></article>`).join("")}</div>`;
 }
 async function watchAnalyse(sym){ if(ODBUSY[sym]) return; renderWatch(); await analyzeOnDemand(sym,{quiet:true}); renderWatch(); renderNav(); }
 document.addEventListener("click",async e=>{
@@ -2406,14 +2411,17 @@ const STABLE=/^(USDC|FDUSD|TUSD|USDP|DAI|EUR|AEUR|USD1|BFUSD|XUSD|RLUSD|USDE|PAX
 function poolUniverse(){ const rs=((LAST&&LAST.rs)||(AUTORES&&AUTORES.rs)||[]).filter(r=>r.sym!=="BTCUSDT");
   if(rs.length>=30) return rs.slice().sort((a,b)=>(b.qv||0)-(a.qv||0)).slice(0,80).map(r=>r.sym);
   return Object.keys(LIVEQV).filter(k=>/USDT$/.test(k)&&k!=="BTCUSDT"&&!STABLE.test(k)&&!E.isStockToken(k.slice(0,-4))).sort((a,b)=>LIVEQV[b]-LIVEQV[a]).slice(0,80); }
-async function ensurePool(){
+async function ensurePool(force=false){
   if(!POOLLOADED){ POOLLOADED=true; try{ if(db){ const d=await db.doc("meta/pooledbt").get(); if(d.exists){ const cached=d.data(); POOL=cached&&cached.validationVersion===2?cached:null; } } }catch(e){} paintPool(); }
   const reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
-  if(POOL&&POOL.validationVersion===2&&!POOL.error&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
-  runPool(reg);
+  if(!force&&POOL&&POOL.validationVersion===2&&!POOL.error&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
+  await runPool(reg);
 }
 async function runPool(reg){
-  if(POOLJOB||!mcp) return; const syms=poolUniverse(); if(syms.length<10) return;
+  if(POOLJOB) return;
+  if(!mcp){ POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:0,accepted:0,rejected:0,error:"Binance connector is not available in this view",minN:CFG.btMinSample||100,rows:[]}; paintPool(); return; }
+  const syms=poolUniverse();
+  if(syms.length<10){ POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:syms.length,accepted:0,rejected:0,error:`Only ${syms.length} eligible coins are available; at least 10 are required`,minN:CFG.btMinSample||100,rows:[]}; paintPool(); return; }
   POOL=null; POOLJOB={done:0,total:syms.length,accepted:0,rejected:[]}; paintPool();
   try{
     const b=await btcForBt(), byCoin={}; let from=Infinity,to=0,idx=0;
@@ -2446,18 +2454,19 @@ async function runPool(reg){
   }catch(e){ POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:syms.length,accepted:0,rejected:syms.length,error:(e&&e.message)||String(e),minN:CFG.btMinSample||100,rows:[]}; }
   finally{ POOLJOB=null; paintPool(); }
 }
+document.addEventListener("click",e=>{ const b=e.target.closest("#poolRefresh"); if(!b) return; b.disabled=true; ensurePool(true).finally(()=>{ b.disabled=false; }); });
 function paintPool(){ document.querySelectorAll("[data-poolbox]").forEach(el=>{ el.innerHTML=poolInner(el.dataset.poolbox); if(LANG==="id") try{ i18nTree(el); }catch(e){} }); }
 function poolInner(sym){
   const d=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric",timeZone:"Asia/Jakarta"}), sR=v=>(v>=0?"+":"")+v.toFixed(2)+"R", pf=v=>v==null||!isFinite(v)?(v===0?"0.00":"∞"):v.toFixed(2);
   const head=t=>`<div class="bt-head"><span class="label">Pooled backtest · all scanned coins</span><span class="muted small">${t}</span></div>`;
-  if(!POOL&&POOLJOB) return head("")+`<p class="muted small">Running the same rules on ${POOLJOB.total} liquid coins… ${POOLJOB.done}/${POOLJOB.total}</p><div class="bar"><i style="width:${Math.round(100*POOLJOB.done/POOLJOB.total)}%"></i></div>`;
-  if(!POOL) return head("")+`<p class="muted small">${mcp?"Pooled backtest starts after the scan.":"Needs the Binance connector: open the dashboard in claude.ai."}</p>`;
-  if(POOL.error) return head("")+`<p class="muted small">Pooled backtest unavailable: ${esc(POOL.error)}</p><p class="muted small">Strict history: ${Number(POOL.accepted)||0} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||0} requested. Minimum 10 valid coins.</p>`;
+  if(!POOL&&POOLJOB) return head("")+`<p class="muted small">Validating strict 4H + 1D history · ${POOLJOB.done}/${POOLJOB.total} processed · ${POOLJOB.accepted} accepted · ${POOLJOB.rejected.length} rejected</p><div class="bar"><i style="width:${Math.round(100*POOLJOB.done/POOLJOB.total)}%"></i></div>`;
+  if(!POOL) return head("")+`<p class="muted small">${mcp?"Waiting for a successful market scan to select the pool universe.":"Binance connector unavailable in this view; open the dashboard in claude.ai."}</p>`;
+  if(POOL.error) return head("")+`<p class="muted small">Pooled backtest unavailable: ${esc(POOL.error)}</p><p class="muted small">Strict history: ${Number(POOL.accepted)||0} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||0} requested. Minimum 10 valid coins.</p>`+(POOL.rejectionDetails&&POOL.rejectionDetails.length?`<details><summary>Rejected history details (${POOL.rejectionDetails.length})</summary><div class="tbl-wrap"><table><thead><tr><th class="l">Coin</th><th>Interval</th><th>Status</th><th class="l">Reason</th></tr></thead><tbody>${POOL.rejectionDetails.map(x=>`<tr><td>${esc(x.sym)}</td><td>${esc(x.interval)}</td><td>${esc(x.status)}</td><td class="l">${esc(x.reason)}</td></tr>`).join("")}</tbody></table></div></details>`:"");
   const coin=CBT[sym]&&CBT[sym].rows?Object.fromEntries(CBT[sym].rows.map(r=>[r.playbook,r])):{};
   const ver=v=>v.level==="ok"?`<span class="chip good">Positive</span>`:v.level==="block"?`<span class="chip crit">Negative</span>`:`<span class="chip warn">${esc(v.text)}</span>`;
   const rows=POOL.rows.map(r=>{ const a=r.all, s=r.same, c=coin[r.playbook], diff=c&&c.all.n&&a.n?c.all.avgR-a.avgR:null;
     return `<tr${r.playbook==="smc"||r.active?' class="bt-hl"':""}><td class="l"><b>${esc(r.name)}</b>${r.active?` <span class="chip good">active in ${esc(E.regName(POOL.regime))}</span>`:""}</td><td class="num">${a.n}</td><td class="num">${r.coins}</td><td class="num">${a.n?Math.round(a.winRate*100)+"%":"–"}</td><td class="num ${a.avgR>=0?"pos":"neg"}">${a.n?sR(a.avgR):"–"}</td><td class="num">${a.n?pf(a.pf):"–"}</td><td class="num muted">${s.n?`${s.n} · ${sR(s.avgR)}`:"–"}</td><td class="num ${diff==null?"":diff>=0?"pos":"neg"}">${diff==null?"–":sR(diff)}</td><td>${btSpark(a.curve)}</td><td class="l">${ver(r.verdict)}</td></tr>`; }).join("");
-  return head(`${POOL.coins} valid coins · ${d(POOL.from)} – ${d(POOL.to)} · updated ${esc(wib(POOL.at))}${POOLJOB?` · refreshing ${POOLJOB.done}/${POOLJOB.total}`:""}`)+
+  return head(`${POOL.coins} valid coins · ${d(POOL.from)} – ${d(POOL.to)} · updated ${esc(wib(POOL.at))}`)+
     `<div class="tbl-wrap"><table class="wide bt-table"><thead><tr><th class="l">Playbook</th><th>Trades</th><th>Coins</th><th>Win rate</th><th>Avg R/trade</th><th>Profit factor</th><th>Same regime (${esc(E.regName(POOL.regime))})</th><th>This coin vs pool</th><th class="l">Equity (R)</th><th class="l">Verdict</th></tr></thead><tbody>${rows}</tbody></table></div>`+
     `<p class="foot" style="margin:8px 0 0">Strict history: ${Number(POOL.accepted)||POOL.coins} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||POOL.coins} requested. Rejected history is never passed to the engine.</p>`+
     `<p class="foot" style="margin:8px 0 0"><span data-l="en">A verdict needs at least ${POOL.minN} trades; below that the row reads "Sample n of ${POOL.minN}". "This coin vs pool" compares the average R per trade on this coin with the pool. Equity curves add trades in date order across coins, so they overlap in time. Backtests are information only and never change a signal.</span><span data-l="id">Kesimpulan butuh minimal ${POOL.minN} trade; di bawah itu tertulis "Sampel n dari ${POOL.minN}". "Koin ini vs gabungan" membandingkan rata-rata R per trade di koin ini dengan gabungan. Kurva ekuitas menjumlahkan trade berurutan tanggal dari semua koin, jadi waktunya bisa tumpang tindih. Backtest hanya informasi dan tidak pernah mengubah sinyal.</span></p>`;
@@ -2577,7 +2586,8 @@ function renderGuide(){
   const ps=E.planStatus(SIGNALS,PLAN,CFG.modal,now), evr=evNow(), reg=LAST?LAST.regime.reg:(REGIMES[0]&&REGIMES[0].reg);
   const act=SIGNALS.filter(s=>effStatus(s)==="baru");
   const gates=[];
-  gates.push(ps.halted?{k:"crit",t:"Trading plan: HALTED",d:ps.reasons[0]||"A stop rule is active. No new entries."}:ps.dayFull?{k:"crit",t:"Trading plan: daily limit hit",d:`${ps.takenToday} new positions today. No more entries today.`}:{k:"good",t:"Trading plan: clear to trade",d:`New positions today ${ps.takenToday}/${PLAN.maxTradesPerDay} · losing streak ${ps.streak}/${PLAN.maxConsecSL}`});
+  const pstate=planState(ps);
+  gates.push({k:ps.halted?"crit":ps.dayFull?"crit":"good",t:`Trading plan: ${pstate.label}`,d:pstate.detail+(ps.until?` · resumes ${wib(ps.until)}`:"")});
   gates.push(evr&&evr.level==="high"?{k:"warn",t:`Event risk: US ${evr.active[0].title} ${inH(evr.active[0].at)}`,d:`Entries allowed at ${Math.round(100*evr.sizeMult)}% size until ${CFG.eventHoursAfter||2}h after the release.`}:evr&&evr.level==="medium"?{k:"warn",t:`US ${evr.watch[0].title} ${inH(evr.watch[0].at)}`,d:"Expect extra volatility; size unchanged."}:{k:"good",t:"Event risk: none in the window",d:evr&&evr.known===false?"Calendar unavailable on the last scan.":"No high-impact US release in the next 24h."});
   if(reg) gates.push(reg==="Downtrend"?{k:"warn",t:"Regime: Downtrend",d:"Only RS leaders may be entered, at 50% size."}:reg==="Capitulation"?{k:"warn",t:"Regime: Capitulation",d:"Scale in only on signals; small size."}:{k:"good",t:`Regime: ${E.regName(reg)}`,d:"Normal playbook for this regime."});
   gates.push(act.length?{k:"good",t:`${act.length} entry signal${act.length>1?"s":""} live`,d:act.map(s=>`${s.sym.replace("USDT","")} at ${fp(s.entry)} (valid until ${wib(s.validUntil)})`).join(" · ")}:{k:"muted",t:"No entry signal live",d:"Wait for a 🟢 NEW SIGNAL alert."});
@@ -2587,14 +2597,10 @@ function renderGuide(){
   // pipeline
   const rows=smcRows()||[];
   if(!rows.length){ $("gPipe").innerHTML=`<div class="empty">Appears after a scan.</div>`; $("gOut").textContent=""; return; }
-  const lanes=[["Wait for pullback","sb-WAIT",r=>stepOf(r)[0].startsWith("Wait for pullback")],["Near zone","sb-LIMIT",r=>stepOf(r)[0].startsWith("Near zone")],["In zone · await 1H/4H confirmation","sb-LIMIT",r=>stepOf(r)[0].startsWith("In zone")],["Enter now","sb-BUY",r=>stepOf(r)[0]==="Enter now"]];
   const dist=r=>r.lo!=null&&r.price>r.hi?` · ${((r.price-r.hi)/r.price*100).toFixed(1)}%`:"";
-  const liveSyms=new Set(act.map(x=>x.sym));
-  for(const k of [0,1,2]){ const f=lanes[k][2]; lanes[k][2]=r=>!liveSyms.has(r.sym)&&f(r); }
-  const f3=lanes[3][2]; lanes[3][2]=r=>f3(r)||liveSyms.has(r.sym);
-  $("gPipe").innerHTML=lanes.map(([name,cl,f],k)=>{ const xs=rows.filter(f); return `<div class="lane${k===3?" lane-go":""}"><div class="lane-h"><span class="sigbadge ${cl}">${esc(name)}</span><span class="muted small">${xs.length}</span></div>${xs.length?xs.map(r=>`<button type="button" class="coin" data-early="${esc(r.sym)}"><b>${esc(r.sym.replace("USDT",""))}</b><span class="muted small num">${fp(r.price)}${dist(r)}</span></button>`).join(""):""}${k===3?act.filter(x=>!rows.some(r=>r.sym===x.sym)).map(x=>`<button type="button" class="coin" data-goto="sinyal"><b>${esc(x.sym.replace("USDT",""))}</b><span class="muted small num">entry ${fp(x.entry)}</span></button>`).join(""):""}${!xs.length&&!(k===3&&act.length)?`<div class="muted small">–</div>`:""}</div>`; }).join("");
-  const out=rows.filter(r=>!lanes.some(l=>l[2](r)));
-  $("gOut").innerHTML=out.length?`Not in play: ${out.map(r=>`<b>${esc(r.sym.replace("USDT",""))}</b> (${esc(stepOf(r)[0])})`).join(" · ")}`:"";
+  const counts=Object.fromEntries(LANES.map(([k])=>[k,rows.filter(r=>laneOf(r)===k).length]));
+  $("gPipe").innerHTML=LANES.map(([key,name,hint,cl],k)=>{ const xs=rows.filter(r=>laneOf(r)===key); return `<div class="lane${key==="now"?" lane-go":""}"><div class="lane-h"><span class="sigbadge ${cl}">${esc(name)}</span><span class="muted small">${counts[key]}</span></div><div class="muted small" style="margin:2px 0 8px">${esc(hint)}</div>${xs.length?xs.map(r=>`<button type="button" class="coin" data-early="${esc(r.sym)}"><b>${esc(r.sym.replace("USDT",""))}</b><span class="muted small num">${fp(r.price)}${dist(r)}</span></button>`).join(""):`<div class="muted small">–</div>`}</div>`; }).join("");
+  $("gOut").textContent="";
 }
 setInterval(()=>{ if(VIEW==="guide") renderGuide(); },30000);
 function renderEarly(){
@@ -2619,7 +2625,7 @@ function renderDash(){ try{ renderToday(); }catch(e){}
   const f1=x=>x.toFixed(1);
   $("dashTiles").innerHTML=[
     tile("BTC regime",ex.reg?`<span class="mini-pill r-${ex.reg}">${esc(E.regName(ex.reg))}</span>`:"—",r?`Since ${esc(day(r.since))}${r.confirmed?"":" · unconfirmed"} · 4H ${esc(r.h4)}`:"Awaiting scan"),
-    tile("Trading plan",ps.halted?"HALTED":ps.dayFull?"DAILY LIMIT HIT":"CLEAR TO TRADE",ps.halted?esc(ps.reasons[0]||""):`New positions today ${ps.takenToday}/${PLAN.maxTradesPerDay} · losing streak ${ps.streak}/${PLAN.maxConsecSL}`,ps.halted?"neg":ps.dayFull?"":"pos"),
+    tile("Trading plan",planState(ps).label,esc(planState(ps).detail),ps.halted?"neg":ps.dayFull?"":"pos"),
     tile("Active signals",String(act.length),act.length?esc(act.slice(0,3).map(s=>s.sym.replace("USDT","")).join(", ")):"No signals pending a decision"),
     tile("Exposure",`${Math.round(ex.pct)}%`,ex.cfg?`Cap ${Math.round(ex.cfg.cap*100)}% · ${ex.taken.length}/${ex.cfg.maxPos} positions`:"—",ex.cfg&&ex.pct>ex.cfg.cap*100?"neg":""),
     tile("MTD P/L",`${ps.monthPct>=0?"+":""}${f1(ps.monthPct)}%`,`Target ${f1(+PLAN.targetMonthlyPct)}% · loss limit −${f1(+PLAN.monthlyLossLimitPct)}%`,ps.monthPct>=0?"pos":"neg"),
@@ -2627,7 +2633,7 @@ function renderDash(){ try{ renderToday(); }catch(e){}
   ].join("");
   $("dashSig").innerHTML=act.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th class="l">Playbook</th><th>Entry</th><th>Stop</th><th>TP2</th><th>R:R</th></tr></thead><tbody>${act.slice(0,8).map(s=>`<tr><td><b>${esc(s.sym.replace("USDT",""))}</b></td><td class="l">${esc(E.PB_NAME[s.playbook]||s.playbook)}${s.smcSignal?" · "+esc(s.smcSignal):""}</td><td class="num">${fp(s.entry)}</td><td class="num neg">${fp(s.stop)}</td><td class="num pos">${fp(s.tp2)}</td><td class="num">${s.rr.toFixed(2)}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">No active signals.</div>`;
   const smc=LAST?(LAST.smc||[]):[];
-  $("dashSmc").innerHTML=smc.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th class="l">Signal</th><th class="l">Zone</th><th>R:R TP2</th></tr></thead><tbody>${smc.map(a=>`<tr><td><b>${esc(a.sym.replace("USDT",""))}</b></td><td class="l"><span class="sigbadge ${a.signal==="BUY"?"sb-BUY":a.signal==="BUY LIMIT"?"sb-LIMIT":a.signal==="WAIT"?"sb-WAIT":"sb-AVOID"}" style="font-size:11px">${esc(a.signal)}</span></td><td class="l num">${a.zone?fp(a.zone.lo)+"–"+fp(a.zone.hi):"–"}</td><td class="num">${a.rr!=null?a.rr.toFixed(2):"–"}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">${LAST?"No coin passes the RS screen.":"Awaiting scan."}</div>`;
+  $("dashSmc").innerHTML=smc.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th class="l">Engine signal</th><th class="l">Action</th><th class="l">Zone</th><th>R:R TP2</th></tr></thead><tbody>${smc.map(a=>{const [action,cl]=stepOf(rowOfA(a));return `<tr><td><b>${esc(a.sym.replace("USDT",""))}</b></td><td class="l"><span class="sigbadge ${a.signal==="BUY"?"sb-BUY":a.signal==="BUY LIMIT"?"sb-LIMIT":a.signal==="WAIT"?"sb-WAIT":"sb-AVOID"}" style="font-size:11px">${esc(a.signal)}</span></td><td class="l"><span class="sigbadge ${cl}" style="font-size:11px">${esc(action)}</span></td><td class="l num">${a.zone?fp(a.zone.lo)+"–"+fp(a.zone.hi):"–"}</td><td class="num">${a.rr!=null?a.rr.toFixed(2):"–"}</td></tr>`;}).join("")}</tbody></table></div>`:`<div class="empty">${LAST?"No coin passes the RS screen.":"Awaiting scan."}</div>`;
   const rs=LAST?LAST.rs.slice(0,6):[];
   $("dashRs").innerHTML=rs.length?`<div class="tbl-wrap"><table><thead><tr><th class="l">Pair</th><th>RS score</th><th>30D vs BTC</th><th>24h vol</th><th class="l">Status</th></tr></thead><tbody>${rs.map(r=>`<tr><td><b>${esc(r.sym.replace("USDT",""))}</b></td><td class="num ${r.score>=0?"pos":"neg"}">${fpct(r.score)}</td><td class="num ${r.d30>=0?"pos":"neg"}">${fpct(r.d30)}</td><td class="num muted">${fvol(r.qv)}</td><td class="l">${r.pass?'<span class="chip good">Pass</span>':'<span class="chip">–</span>'}</td></tr>`).join("")}</tbody></table></div>`:`<div class="empty">Awaiting scan.</div>`;
   $("dashLog").innerHTML=EVENTS.length?EVENTS.slice(0,4).map(e=>`<article class="${esc(e.kind)}"><div class="muted small">${esc(wib(e.at))}</div>${esc(String(e.text).split("\n").slice(0,3).join("\n"))}</article>`).join(""):`<div class="empty">No alerts yet.</div>`;
@@ -2641,7 +2647,8 @@ function renderRisk(){
     tile("Open positions",`${ex.taken.length}${ex.pendN?" + "+ex.pendN:""}${ex.cfg?" / "+ex.cfg.maxPos:""}`,ex.reg?`${esc(E.regName(ex.reg))} regime limit${ex.pendN?" · pending signals count toward it":""}`:""),
     tile("Journal drawdown",`${f1(dd.curPct)}%`,`Limit ${CFG.ddLimit}% (size cut 50%) · max ${f1(dd.maxPct)}%`,dd.curPct>=CFG.ddLimit?"neg":""),
     tile("Losing streak",`${ps.streak} / ${PLAN.maxConsecSL}`,`${PLAN.cooldownDays}-day cooldown when hit`,ps.streak>=PLAN.maxConsecSL?"neg":""),
-    tile("MTD P/L",`${ps.monthPct>=0?"+":""}${f1(ps.monthPct)}%`,`Stop at −${f1(+PLAN.monthlyLossLimitPct)}%`,ps.monthPct>=0?"pos":"neg")
+    tile("MTD P/L",`${ps.monthPct>=0?"+":""}${f1(ps.monthPct)}%`,`Stop at −${f1(+PLAN.monthlyLossLimitPct)}%`,ps.monthPct>=0?"pos":"neg"),
+    tile("Trading permission",planState(ps).label,esc(planState(ps).detail),ps.halted?"neg":ps.dayFull?"":"pos")
   ].join("");
   $("riskRegime").innerHTML=`<div class="tbl-wrap"><table><thead><tr><th class="l">Regime</th><th class="l">Playbook</th><th class="l">Risk/trade</th><th>Size multiplier</th><th>Max exposure</th><th>Max positions</th></tr></thead><tbody>${Object.entries(E.REGIME).map(([k,v])=>`<tr${k===ex.reg?' class="pass"':""}><td><span class="mini-pill r-${k}">${esc(E.regName(k))}</span></td><td class="l">${esc(v.label)}</td><td class="l">${esc(v.risk)}</td><td class="num">${String(v.mult)}×</td><td class="num">${Math.round(v.cap*100)}%</td><td class="num">${v.maxPos}</td></tr>`).join("")}</tbody></table></div><p class="foot" style="margin-top:8px">The highlighted row is the active regime. Signals are rejected if R:R < ${CFG.minRR}, position slots are full, exposure is used up, or correlation with an open position is > ${CFG.corrMax}.</p>`;
   const live=Object.fromEntries(((LAST&&LAST.positions)||[]).map(p=>[p.id,livePos(p)])); for(const j of SIGNALS) if(j.status==="diambil"&&!live[j.id]&&LIVE[j.sym]!=null) live[j.id]=livePos(Object.assign({},j,{price:null}));
@@ -2784,10 +2791,9 @@ function takeBlock(id){ const ps=planNow(); if(ps.halted) return "Trading halted
   const n=checklistItems().length, c=CHECKED[id]?CHECKED[id].size:0; return c<n?`Tick ${n-c} more checklist item${n-c>1?"s":""}`:""; }
 function canTake(id){ return takeBlock(id)===""; }
 function renderPlanBar(){
-  const ps=planNow(), el=$("planBar"); const f=x=>x.toFixed(1);
-  if(ps.halted){ el.className="planbar stop"; el.innerHTML=`Trading halted by the trading plan. ${ps.reasons.map(esc).join(" · ")}${ps.until?` Resumes ${esc(wib(ps.until))}.`:""}`; return; }
-  el.className="planbar "+(ps.dayFull||ps.streak>=PLAN.maxConsecSL-1||ps.monthPct<=-PLAN.monthlyLossLimitPct/2?"warn":"ok");
-  el.textContent=`Clear to trade · new positions today ${ps.takenToday}/${PLAN.maxTradesPerDay} · MTD P/L ${f(ps.monthPct)}% (target ${f(+PLAN.targetMonthlyPct)}%, loss limit −${f(+PLAN.monthlyLossLimitPct)}%) · losing streak ${ps.streak}/${PLAN.maxConsecSL}`;
+  const ps=planNow(), state=planState(ps), el=$("planBar"), f=x=>x.toFixed(1);
+  el.className="planbar "+(state.key==="halted"?"stop":state.key==="daily-limit"||ps.streak>=PLAN.maxConsecSL-1||ps.monthPct<=-PLAN.monthlyLossLimitPct/2?"warn":"ok");
+  el.textContent=`${state.label} · ${state.detail} · MTD P/L ${f(ps.monthPct)}% (target ${f(+PLAN.targetMonthlyPct)}%, loss limit −${f(+PLAN.monthlyLossLimitPct)}%)`+(ps.until?` · resumes ${wib(ps.until)}`:"");
 }
 function renderJournal(){
   const rows=SIGNALS.slice().sort((a,b)=>(b.candle||0)-(a.candle||0));
@@ -3349,6 +3355,7 @@ async function scan(){
     if(res.warnings.length) banner("warn",esc(res.warnings.join(" ")),"warnBanner");
     try{ await webAfterScan(res); }catch(e){ console.error("webAfterScan",e); }
     await persist(res); try{ dataMeta(); }catch(e){}
+    ensurePool().catch(e=>{ POOL={at:Date.now(),validationVersion:2,error:(e&&e.message)||"Pooled backtest could not start",accepted:0,rejected:0,requested:0,minN:CFG.btMinSample||100,rows:[]}; paintPool(); });
     setTimeout(async()=>{ for(const s0 of SIGNALS.filter(s=>(effStatus(s)==="baru"||s.status==="diambil")&&!s.btSignal&&!BTRES[s.id])) await runBt(s0.id); },1500);
     setProg(1,"Scanned "+wib(res.at)+` · ${res.rs.length} pairs`);
   }catch(e){ banner("crit",esc(errText(e,BIN)),"scanErr"); setProg(0,"Scan stopped"); }
