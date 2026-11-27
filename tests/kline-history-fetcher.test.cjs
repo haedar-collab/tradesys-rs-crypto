@@ -44,6 +44,19 @@ test("fetches latest then older pages using endTime=oldestOpenTime-1", async () 
   assert.deepEqual(result.pagination.cursorHistory, [NOW - 3 * HOUR - 1]);
 });
 
+test("uses an explicit initial endTime before requesting the first page", async () => {
+  const initialEndTime = NOW - 10 * HOUR - 1;
+  let firstCall;
+  const result = await fetchHistoricalKlines({
+    ...base,
+    targetCandles: 2,
+    initialEndTime,
+    fetchPage: async params => { firstCall = params; return page(NOW - 3 * HOUR, 2); }
+  });
+  assert.equal(result.status, "COMPLETE");
+  assert.equal(firstCall.endTime, initialEndTime);
+});
+
 test("stops immediately when target count is reached", async () => {
   let calls = 0;
   const result = await fetchHistoricalKlines({
