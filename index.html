@@ -2077,6 +2077,7 @@ if (typeof module !== "undefined" && module.exports) module.exports = API; else 
 })(typeof globalThis !== "undefined" ? globalThis : this);
 
 </script>
+<script src="./lib/per-coin-backtest-history.browser.js"></script>
 <script>
 (() => {
 "use strict";
@@ -2367,10 +2368,16 @@ async function btcForBt(){ if(BTCBT&&Date.now()-BTCBT.at<6*36e5) return BTCBT; c
 async function runCoinBt(sym){
   if(CBTBUSY[sym]||!mcp) return; CBTBUSY[sym]=true; paintBt(sym);
   try{
-    // about 2 years of 4H candles (4,380) plus warm-up: up to 5 pages of 1,000, older pages via endTime
-    const b=await btcForBt(), pages=[await provider.klines(sym,"4h",1000)], t0=k=>+(k[0]!=null?k[0]:(k.openTime||k.t));
-    while(pages.reduce((n,p)=>n+p.length,0)<4500&&pages.length<5&&pages[0].length>=1000){ let o=null; try{ o=payloadOf(await mcp.callTool(BIN,TOOLS.klines,{symbol:sym,interval:"4h",limit:1000,endTime:t0(pages[0][0])-1},CACHE)); }catch(e){ o=null; } if(!Array.isArray(o)||!o.length) break; pages.unshift(o); }
-    const r4=pages.flat().slice(-4500);
+    const b=await btcForBt();
+    const history=await window.TradesysPerCoinBacktestHistory.load({
+      callTool:(server,tool,input)=>mcp.callTool(server,tool,input),
+      server:BIN, tool:TOOLS.klines, symbol:sym
+    });
+    if(!history.accepted){
+      CBT[sym]={error:history.reason||"Strict historical data validation failed",historyStatus:history.status,history:history.pagination,at:Date.now()};
+      return;
+    }
+    const r4=history.rows;
     const d=E.prepare(E.series(await provider.klines(sym,"1d",1000)),CFG), reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
     await new Promise(r=>setTimeout(r,0));
     CBT[sym]=E.backtestCoin(r4,d,b.p,b.tl,sym,reg,CFG);
