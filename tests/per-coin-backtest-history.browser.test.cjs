@@ -34,6 +34,31 @@ test("browser history helper accepts only a complete, contiguous target sample",
   assert.equal(result.rows.length, 4500);
 });
 
+test("browser history starts at the last closed 4H candle and excludes the forming candle", async () => {
+  const now = 2_000_000_000_000;
+  const interval = history.INTERVAL_MS;
+  const boundary = Math.floor(now / interval) * interval;
+  const closed = candles(1000, boundary - 1000 * interval, now);
+  const p = 100 + closed.length / 1000;
+  const forming = [boundary, String(p), String(p + 2), String(p - 2), String(p + 1),
+    "10", boundary + interval - 1, "1000", "20", "5", "500", "0"];
+  const apiRows = closed.concat([forming]);
+  let requestedEndTime;
+  const result = await history.load({
+    callTool: async (_server, _tool, input) => {
+      requestedEndTime = input.endTime;
+      return apiRows.filter(row => row[0] <= input.endTime).slice(-input.limit);
+    },
+    server: "binance", tool: "klines", symbol: "BTCUSDT", now,
+    targetCandles: 1000, pageLimit: 1000, maxPages: 1
+  });
+  assert.equal(requestedEndTime, boundary - 1);
+  assert.equal(result.accepted, true);
+  assert.equal(result.status, "COMPLETE");
+  assert.equal(result.rows.length, 1000);
+  assert.ok(result.rows.at(-1)[6] < now);
+});
+
 test("browser history helper blocks short history", async () => {
   const rows = candles(600);
   const result = await history.load({
