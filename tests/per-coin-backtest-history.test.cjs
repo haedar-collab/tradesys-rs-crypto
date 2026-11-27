@@ -32,8 +32,11 @@ function makePagedCallTool({ pageSize = 1000, pageCount = 5, now }) {
 
 test("accepts only a complete target-sized per-coin 4H history", async () => {
   const now = Date.UTC(2026, 10, 27);
+  const calls = [];
+  const baseCallTool = makePagedCallTool({ now });
+  const callTool = async (server, tool, input) => { calls.push(input); return baseCallTool(server, tool, input); };
   const result = await loadPerCoinBacktestHistory({
-    callTool: makePagedCallTool({ now }),
+    callTool,
     server: "Binance",
     tool: "spot.klines",
     symbol: "BTCUSDT",
@@ -48,6 +51,7 @@ test("accepts only a complete target-sized per-coin 4H history", async () => {
   assert.equal(result.status, "COMPLETE");
   assert.equal(result.rows.length, 4500);
   assert.equal(result.reason, null);
+  assert.equal(calls[0].endTime, Math.floor(now / FOUR_HOURS_MS) * FOUR_HOURS_MS - 1);
 });
 
 test("blocks history exhaustion before the required target is reached", async () => {
