@@ -21,6 +21,7 @@ function harness(history) {
     CFG: {},
     LAST: null,
     AUTORES: null,
+    setTimeout: callback => { callback(); return 0; },
     CBT: {},
     CBTBUSY: {},
     BTCBT: null,
