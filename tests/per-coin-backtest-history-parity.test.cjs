@@ -82,7 +82,7 @@ test("CommonJS and browser boundaries agree on complete paginated history", asyn
   const rows = makeRows(newestOpen - 4999 * FOUR_HOURS_MS, 5000);
   const results = await runBoth({ rows, now, targetCandles: 4500 });
   assertSameDecision(results, "COMPLETE", true, 4500);
-  assert.deepEqual(results.browser.rows.map(row => row[0]), results.commonJs.rows.map(row => row[0]));
+  assert.deepEqual(Array.from(results.browser.rows, row => Number(row[0])), Array.from(results.commonJs.rows, row => Number(row[0])));
 });
 
 test("CommonJS and browser boundaries both block exhausted short history", async () => {
