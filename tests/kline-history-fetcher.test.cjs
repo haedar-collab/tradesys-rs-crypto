@@ -195,3 +195,25 @@ test("preserves source page arrays without mutation", async () => {
   });
   assert.equal(JSON.stringify([latest, older]), before);
 });
+
+test("rejects a provider page larger than the requested limit", async () => {
+  const result = await fetchHistoricalKlines({
+    ...base,
+    fetchPage: async () => page(NOW - 4 * HOUR, 3)
+  });
+  assert.equal(result.status, "INVALID");
+  assert.equal(result.pagination.stopReason, "PAGE_EXCEEDS_LIMIT");
+  assert.ok(result.errors.some(item => item.code === "PAGINATION_INVARIANT_FAILED"));
+});
+
+test("rejects a page response that does not move the backward cursor", async () => {
+  let calls = 0;
+  const latest = page(NOW - 3 * HOUR, 2);
+  const result = await fetchHistoricalKlines({
+    ...base,
+    fetchPage: async () => { calls += 1; return latest; }
+  });
+  assert.equal(result.status, "INVALID");
+  assert.equal(result.pagination.stopReason, "CURSOR_NOT_PROGRESSING");
+  assert.equal(calls, 2);
+});
