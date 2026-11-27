@@ -93,6 +93,17 @@ Use deterministic synthetic Binance-format fixtures; no live API dependency:
 - invalid row inside an otherwise valid page;
 - forming last candle excluded from closed-candle analysis.
 
+## Follow-up implementation status
+
+The isolated modules have now been added on `dev/cloudflare-modernization`:
+
+- `lib/kline-page-merger.cjs`: validates and merges oldest-to-newest pages, rejects invalid cross-page continuity, and distinguishes `COMPLETE`, `HISTORY_EXHAUSTED`, `INCOMPLETE`, and `INVALID`.
+- `lib/kline-history-fetcher.cjs`: injectable backward-pagination orchestration with request caps, bounded retries, cursor progress checks, explicit history-exhaustion confirmation, and pagination metadata.
+- `tests/kline-page-merger.test.cjs` and `tests/kline-history-fetcher.test.cjs`: deterministic tests without live Binance network calls.
+- `docs/KLINE-PAGE-MERGER.md` and `docs/KLINE-HISTORY-FETCHER.md`: module contracts and integration boundaries.
+
+The fetcher retrieves newest-to-oldest, then reverses only the page list before passing it to the merger. Candle rows are never sorted. Short or empty responses remain incomplete unless an explicit `isHistoryExhausted` callback confirms history exhaustion.
+
 ## Decision
 
-The existing pagination cursor is directionally sound, but the implementation is not yet Strict / Fail-safe because it can return a partial historical sample after a page-fetch failure without marking the result incomplete. The next safe task is to implement and test the isolated page-merging/status helper, not to change the production backtest or signal paths.
+The original production pagination path remains a fail-safe gap: it can still pass partial history to a backtest after a failed older-page request. The isolated fetcher and merger are now implemented and their CI tests pass, but they are **not imported by `index.html`**. The next safe task is a controlled integration design and test seam for the per-coin historical backtest only. Do not modify strategy rules, live signal paths, or the main branch in that stage.
