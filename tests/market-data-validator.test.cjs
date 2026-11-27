@@ -68,6 +68,19 @@ test("rejects negative volume", () => {
   assert.ok(codes(result).includes(CODES.VOLUME_NEGATIVE));
 });
 
+test("rejects close times that do not match the supplied fixed interval", () => {
+  const shortClose = candle(NOW - HOUR, { 6: NOW - 2 });
+  const result = validateKlines([shortClose], { now: NOW, intervalMs: HOUR });
+  assert.ok(codes(result).includes(CODES.CLOSE_TIME_INTERVAL_MISMATCH));
+});
+
+test("accepts the exact inclusive close-time boundary for a fixed interval", () => {
+  const row = candle(NOW - HOUR);
+  row[6] = NOW - 1;
+  const result = validateKlines([row], { now: NOW, intervalMs: HOUR });
+  assert.equal(result.status, "VALID");
+});
+
 test("rejects a candle at the exclusive close-time boundary", () => {
   const row = candle(NOW - HOUR);
   row[6] = NOW;
