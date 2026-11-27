@@ -4,7 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { validateKlines, CODES } = require("../lib/market-data-validator.cjs");
 
-const NOW = 10_000_000;
+const NOW = 100_000_000;
 const HOUR = 60 * 60 * 1000;
 const candle = (openTime = NOW - 2 * HOUR, overrides = {}) => {
   const row = [openTime, "10", "12", "9", "11", "100", openTime + HOUR - 1, "1100"];
