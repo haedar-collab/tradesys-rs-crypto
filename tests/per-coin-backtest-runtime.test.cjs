@@ -74,7 +74,7 @@ test("runtime: rejected strict history never reaches the backtest engine", async
     pagination: { pageCount: 2, receivedCount: 2000, targetCandles: 4500 }
   });
 
-  await vm.runInContext(runCoinBtSource + '\\nrunCoinBt("BTCUSDT")', h.context);
+  await vm.runInContext(runCoinBtSource + '\nrunCoinBt("BTCUSDT")', h.context);
 
   assert.equal(h.calls.engine.length, 0);
   assert.equal(h.calls.daily, 0);
@@ -92,7 +92,7 @@ test("runtime: accepted strict history passes the exact validated rows to the en
     pagination: { pageCount: 5, receivedCount: 5000, targetCandles: 4500 }
   }));
 
-  await vm.runInContext(runCoinBtSource + '\\nrunCoinBt("BTCUSDT")', h.context);
+  await vm.runInContext(runCoinBtSource + '\nrunCoinBt("BTCUSDT")', h.context);
 
   assert.equal(h.calls.engine.length, 1);
   assert.equal(h.calls.engine[0][0], h.rows);
