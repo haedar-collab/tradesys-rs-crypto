@@ -24,7 +24,7 @@ Options:
 
 The validator does not sort, drop, interpolate, forward-fill, or mutate input rows. Any malformed candle or sequence error makes the complete dataset `INVALID`. If there are no data errors but fewer than `minCandles` accepted rows, status is `INSUFFICIENT`.
 
-The close-time rule is exclusive: a candle is closed only when `closeTime < now`.
+The close-time rule is exclusive: a candle is closed only when `closeTime < now`. For fixed-duration intervals, the validator also requires Binance's inclusive close timestamp to equal `openTime + intervalMs - 1`.
 
 ## Validation coverage
 
@@ -34,12 +34,13 @@ The close-time rule is exclusive: a candle is closed only when `closeTime < now`
 - high / low consistency with open, close, and range;
 - finite, non-negative base and quote volume;
 - duplicate and descending open timestamps;
-- exact interval spacing when `intervalMs` is supplied;
+- exact open-time spacing when `intervalMs` is supplied;
+- exact inclusive Binance close-time boundary (`openTime + intervalMs - 1`) when `intervalMs` is supplied;
 - minimum accepted candle count.
 
 ## Integration boundary
 
-This module is deliberately isolated. Do not connect it to production signal paths until interval mappings for every supported Binance timeframe, historical API edge cases, and failure propagation have been reviewed. Integration must block only the affected symbol / timeframe, with BTC Daily failure propagated only to signals that depend on BTC regime. Risk-reduction and position-management alerts must remain available.
+This module is deliberately isolated. The current application requests fixed-duration `15m`, `1h`, `4h`, and `1d` candles. Its chart code contains corresponding millisecond constants, but the validator does not yet own a canonical Binance interval-name map. The `1M` calendar-month interval must not be represented as a fixed millisecond duration. Do not connect the validator to production signal paths until interval mappings, historical API edge cases, pagination overlap, and failure propagation have been reviewed. Integration must block only the affected symbol / timeframe, with BTC Daily failure propagated only to signals that depend on BTC regime. Risk-reduction and position-management alerts must remain available.
 
 ## Verification
 
