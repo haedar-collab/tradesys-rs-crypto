@@ -20,7 +20,11 @@ const result = await fetchHistoricalKlines({
   maxPages: 5,
   maxRetries: 1,
   intervalMs: 4 * 60 * 60 * 1000,
-  fetchPage: params => provider.klines(params.symbol, params.interval, params.limit, params.endTime),
+  fetchPage: async ({ symbol, interval, limit, endTime }) => {
+    // Adapt this to the app's actual Binance connector call.
+    // Include endTime only when it is not null.
+    return await yourBinanceKlineRequest({ symbol, interval, limit, endTime });
+  },
   // Return true only when the retrieval layer can confirm that older listing history is exhausted.
   isHistoryExhausted: async ({ page, pageLimit }) => page.length < pageLimit
 });
@@ -36,7 +40,7 @@ The example's callback is a policy decision, not a universal Binance guarantee. 
 | `symbol` | required | Binance Spot symbol. |
 | `interval` | required | Binance interval string. |
 | `pageLimit` | 1000 | Maximum expected response rows per page. |
-| `targetCandles` | 4500 | Desired total candle count. |
+| `targetCandles` | 4500 | Minimum total candle count that marks the target as reached; the helper does not truncate excess rows. |
 | `minCandles` | 1 | Minimum usable count. |
 | `maxPages` | 5 | Hard request-page cap. |
 | `maxRetries` | 1 | Retries after the first failed request. |
