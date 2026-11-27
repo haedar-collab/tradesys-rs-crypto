@@ -1,0 +1,13 @@
+{
+  "name": "tradesys-rs-crypto",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Characterization test foundation for Tradesys RS Crypto",
+  "scripts": {
+    "test": "node --test",
+    "test:watch": "node --test --watch"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
