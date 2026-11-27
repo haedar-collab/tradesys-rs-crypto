@@ -217,3 +217,15 @@ test("rejects a page response that does not move the backward cursor", async () 
   assert.equal(result.pagination.stopReason, "CURSOR_NOT_PROGRESSING");
   assert.equal(calls, 2);
 });
+
+test("explicitly exhausted empty history is not mislabeled as a fetch failure", async () => {
+  const result = await fetchHistoricalKlines({
+    ...base,
+    fetchPage: async () => [],
+    isHistoryExhausted: async () => true
+  });
+  assert.equal(result.status, "HISTORY_EXHAUSTED");
+  assert.equal(result.valid, false);
+  assert.equal(result.stats.historyExhausted, true);
+  assert.equal(result.stats.fetchFailed, false);
+});
