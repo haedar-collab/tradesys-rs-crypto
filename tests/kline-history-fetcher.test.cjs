@@ -211,6 +211,7 @@ test("rejects a page response that does not move the backward cursor", async () 
   const latest = page(NOW - 3 * HOUR, 2);
   const result = await fetchHistoricalKlines({
     ...base,
+    targetCandles: 5,
     fetchPage: async () => { calls += 1; return latest; }
   });
   assert.equal(result.status, "INVALID");
