@@ -2454,7 +2454,7 @@ async function runPool(reg){
   }catch(e){ POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:syms.length,accepted:0,rejected:syms.length,error:(e&&e.message)||String(e),minN:CFG.btMinSample||100,rows:[]}; }
   finally{ POOLJOB=null; paintPool(); }
 }
-document.addEventListener("click",e=>{ const b=e.target.closest("#poolRefresh"); if(!b) return; b.disabled=true; ensurePool(true).finally(()=>{ b.disabled=false; }); });
+document.addEventListener("click",e=>{ const b=e.target.closest("#poolRefresh"); if(!b||POOLJOB) return; b.disabled=true; ensurePool(true).catch(err=>{ POOL={at:Date.now(),validationVersion:2,error:(err&&err.message)||"Pooled backtest refresh failed",accepted:0,rejected:0,requested:0,minN:CFG.btMinSample||100,rows:[]}; paintPool(); }).finally(()=>{ b.disabled=false; }); });
 function paintPool(){ document.querySelectorAll("[data-poolbox]").forEach(el=>{ el.innerHTML=poolInner(el.dataset.poolbox); if(LANG==="id") try{ i18nTree(el); }catch(e){} }); }
 function poolInner(sym){
   const d=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric",timeZone:"Asia/Jakarta"}), sR=v=>(v>=0?"+":"")+v.toFixed(2)+"R", pf=v=>v==null||!isFinite(v)?(v===0?"0.00":"∞"):v.toFixed(2);
