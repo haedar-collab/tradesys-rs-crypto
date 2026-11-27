@@ -2217,7 +2217,7 @@ function errText(e,server){
 }
 
 /* ---------- shell: navigation ---------- */
-function navCounts(){ const act=SIGNALS.filter(s=>effStatus(s)==="baru").length, open=SIGNALS.filter(s=>s.status==="diambil").length, smcN=LAST?(LAST.smc||[]).filter(a=>a.signal==="BUY"||a.signal==="BUY LIMIT").length:0; let wN=0; try{ wN=wlList().filter(b=>{ const w=watchRow(b+"USDT"); return w.lane==="now"||w.lane==="ready"; }).length; }catch(e){} return {sinyal:act, risiko:open, smc:smcN, watch:wN}; }
+function navCounts(){ const act=SIGNALS.filter(s=>effStatus(s)==="baru").length, open=SIGNALS.filter(s=>s.status==="diambil").length, smcN=(smcRows()||[]).filter(r=>{const lane=laneOf(r);return lane==="now"||lane==="ready";}).length; let wN=0; try{ wN=wlList().filter(b=>{ const w=watchRow(b+"USDT"); return w.lane==="now"||w.lane==="ready"; }).length; }catch(e){} return {sinyal:act, risiko:open, smc:smcN, watch:wN}; }
 function show(v){ v=OLDVIEW[v]||v; if(!NAV.some(n=>n[0]===v)) v="dashboard"; VIEW=v; document.querySelectorAll(".view").forEach(el=>{ el.hidden=el.dataset.view!==v; }); renderNav(); fitSoon(); if(v==="guide") try{ renderGuide(); }catch(e){} if(v==="pengaturan") try{ dataMeta(); }catch(e){} if(v==="watch") try{ renderWatch(); }catch(e){} }
 function go(v){ if(location.hash!=="#"+v) location.hash=v; else show(v); try{ window.scrollTo({top:0}); }catch(e){} fitSoon(); }
 window.addEventListener("hashchange",()=>show(location.hash.slice(1)));
@@ -2241,9 +2241,9 @@ function renderToday(){
   const act=SIGNALS.filter(s=>effStatus(s)==="baru").sort((a,b)=>b.confidence-a.confidence);
   const open=SIGNALS.filter(s=>s.status==="diambil"), brake=LAST&&LAST.brake;
   let cls="vb-wait", head="NO TRADE", sub="No setup meets every condition. Wait for an alert.";
-  if(ps.halted){ cls="vb-stop"; head="STOP TRADING"; sub=ps.reasons[0]||"A trading-plan stop rule is active."; }
-  else if(brake){ cls="vb-stop"; head="CIRCUIT BREAKER"; sub="BTC broke support on heavy volume. Tighten stops or exit all altcoins."; }
-  else if(act.length&&ps.dayFull){ cls="vb-wait"; head="DAILY LIMIT HIT"; sub=`${ps.takenToday} new positions opened today. Further signals are info only.`; }
+  const permission=planState(ps);
+  if(permission.tone==="stop"){ cls="vb-stop"; head=permission.label; sub=permission.detail; }
+  else if(permission.key==="daily-limit"){ cls="vb-wait"; head=permission.label; sub=permission.detail+" Further signals are information only."; }
   else if(act.length){ cls="vb-go"; head=`${act.length} ENTRY SIGNAL${act.length>1?"S":""}`; sub="Run the pre-trade checklist on the signal card, then execute at the levels shown."; }
   else if(reg==="Downtrend"){ sub="BTC is in a downtrend. Stay in stablecoins; the system is watching the RS leaders' zones and will alert you."; }
   else if(reg==="Kapitulasi"){ sub="Capitulation phase. Scale in only when a signal fires."; }
