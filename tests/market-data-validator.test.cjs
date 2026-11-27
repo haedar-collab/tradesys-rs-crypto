@@ -100,7 +100,7 @@ test("rejects missing intervals when intervalMs is supplied", () => {
 test("rejects non-standard positive interval spacing", () => {
   const result = validateKlines([
     candle(NOW - 3 * HOUR),
-    candle(NOW - HOUR - 30 * 60 * 1000)
+    candle(NOW - 2 * HOUR - 30 * 60 * 1000)
   ], { now: NOW, intervalMs: HOUR });
   assert.ok(codes(result).includes(CODES.INTERVAL_MISMATCH));
 });
