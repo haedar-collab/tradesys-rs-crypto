@@ -110,8 +110,8 @@ test("global trading permission uses one shared status model across dashboard ta
 
 test("circuit breaker is part of the shared trading permission and blocks taking signals", () => {
   assert.match(html, /LAST&&LAST\.brake\?\{key:"circuit-breaker",label:"CIRCUIT BREAKER"/);
-  assert.match(html, /if\(LAST&&LAST\.brake\) return "Circuit breaker active: BTC market risk blocks new entries"/);
-  assert.match(html, /const can=!ps\.halted&&!ps\.dayFull&&!\(LAST&&LAST\.brake\)/);
+  assert.match(html, /function takeBlock\(id\)\{ const state=planState\(planNow\(\)\); if\(state\.key!=="clear"\) return state\.detail/);
+  assert.match(html, /const can=pstate\.key==="clear"/);
 });
 
 test("dashboard verdict and action items respect the shared trading permission", () => {
