@@ -18,11 +18,11 @@ test("engine exposes the expected public API", () => {
 });
 
 test("baseline EMA uses an SMA seed and returns null before the seed period", () => {
-  assert.deepEqual(E.ind.ema([1, 2, 3, 4], 3), [null, null, 2, 3]);
+  assert.deepEqual(Array.from(E.ind.ema([1, 2, 3, 4], 3)), [null, null, 2, 3]);
 });
 
 test("baseline SMA returns a rolling average after the first full window", () => {
-  assert.deepEqual(E.ind.sma([1, 2, 3, 4], 2), [null, 1.5, 2.5, 3.5]);
+  assert.deepEqual(Array.from(E.ind.sma([1, 2, 3, 4], 2)), [null, 1.5, 2.5, 3.5]);
 });
 
 test("baseline RSI returns 100 for a rising series after warm-up", () => {
@@ -39,7 +39,7 @@ test("series excludes candles whose close time has not passed", () => {
     [2000, "11", "13", "10", "12", "120", 2999, "1440"],
     [3000, "12", "14", "11", "13", "130", 3999, "1690"]
   ];
-  const result = E.series(rows, 3000);
+  const result = E.series(rows, 2500);
   assert.deepEqual(Array.from(result.t), [1000]);
   assert.deepEqual(Array.from(result.c), [11]);
   assert.deepEqual(Array.from(result.v), [100]);
