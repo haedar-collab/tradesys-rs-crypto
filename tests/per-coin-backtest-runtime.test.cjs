@@ -86,7 +86,7 @@ test("runtime: rejected strict history never reaches the backtest engine", async
 });
 
 test("runtime: accepted strict history passes the exact validated rows to the engine", async () => {
-  const h = harness(rows => ({
+  const h = harness((rows, options) => ({
     accepted: true,
     status: "COMPLETE",
     reason: null,
