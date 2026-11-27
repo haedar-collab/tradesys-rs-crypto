@@ -74,3 +74,36 @@ test("pooled cache rejects results created before strict-history validation", ()
   assert.match(html, /validationVersion:2/);
   assert.match(html, /Strict history:/);
 });
+
+test("pooled backtest has a visible dashboard panel and a manual refresh control", () => {
+  assert.match(html, /id="poolPanel"/);
+  assert.match(html, /data-poolbox=""/);
+  assert.match(html, /id="poolRefresh"/);
+  assert.match(html, /document\.addEventListener\("click",e=>\{ const b=e\.target\.closest\("#poolRefresh"\)/);
+});
+
+test("pooled backtest starts automatically after a successful scan", () => {
+  const start = html.indexOf("async function scan(){");
+  const end = html.indexOf("/* ---------- web edition: navigation", start);
+  const fn = html.slice(start, end);
+  assert.match(fn, /ensurePool\(\)\.catch/);
+  assert.ok(fn.indexOf("await persist(res)") < fn.indexOf("ensurePool().catch"));
+});
+
+test("Analysis, Dashboard, Watchlist and Entry Guide use the same setup action classifier", () => {
+  assert.match(html, /function stepOf\(r\)/);
+  assert.match(html, /function laneOf\(r\)/);
+  assert.match(html, /const counts=Object\.fromEntries\(LANES\.map\(\[k\]\s*=>\[k,rows\.filter\(r=>laneOf\(r\)===k\)\.length\]\)\)/);
+  assert.match(html, /const \[action,cl\]=stepOf\(rowOfA\(a\)\)/);
+  assert.match(html, /const step=r\?stepOf\(r\):null, lane=r\?laneOf\(r\):"none"/);
+  assert.match(html, /const \[st,cl\]=stepOf\(r\)/);
+});
+
+test("global trading permission uses one shared status model across dashboard tabs", () => {
+  assert.match(html, /const planState=ps=>/);
+  assert.match(html, /planState\(planNow\(\)\)/);
+  assert.match(html, /tile\("Trading plan",planState\(ps\)\.label/);
+  assert.match(html, /tile\("Trading permission",planState\(ps\)\.label/);
+  assert.match(html, /const ps=planNow\(\), state=planState\(ps\)/);
+  assert.match(html, /const pstate=planState\(ps\)/);
+});
