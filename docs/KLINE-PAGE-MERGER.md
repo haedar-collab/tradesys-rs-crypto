@@ -37,7 +37,7 @@ A fetch failure always produces `INCOMPLETE` unless a data-integrity violation a
 
 `nextOlderEndTime(oldestOpenTime)` returns `oldestOpenTime - 1`, matching the existing backward-pagination boundary approach. It returns null at timestamp zero and throws for invalid timestamps.
 
-The retrieval layer must still enforce cursor progress and page request limits. This helper does not perform requests or infer whether a short page means listing-history exhaustion.
+The retrieval layer must still enforce cursor progress and page request limits. `assertOlderCursorProgress(previousEndTime, nextEndTime)` throws unless the next cursor is a strictly smaller non-negative safe integer. This helper does not perform requests or infer whether a short page means listing-history exhaustion.
 
 ## Important limits
 
