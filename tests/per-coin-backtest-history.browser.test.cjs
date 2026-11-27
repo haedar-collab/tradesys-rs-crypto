@@ -42,7 +42,7 @@ test("browser history helper blocks short history", async () => {
   });
   assert.equal(result.accepted, false);
   assert.equal(result.status, "HISTORY_EXHAUSTED");
-  assert.deepEqual(result.rows, []);
+  assert.equal(result.rows.length, 0);
 });
 
 test("browser history helper blocks older-page fetch failure", async () => {
@@ -54,7 +54,7 @@ test("browser history helper blocks older-page fetch failure", async () => {
   });
   assert.equal(result.accepted, false);
   assert.equal(result.status, "INCOMPLETE");
-  assert.deepEqual(result.rows, []);
+  assert.equal(result.rows.length, 0);
 });
 
 test("browser history helper rejects malformed candle data", async () => {
@@ -66,5 +66,5 @@ test("browser history helper rejects malformed candle data", async () => {
   });
   assert.equal(result.accepted, false);
   assert.equal(result.status, "INVALID");
-  assert.deepEqual(result.rows, []);
+  assert.equal(result.rows.length, 0);
 });
