@@ -34,6 +34,29 @@ test("browser history helper accepts only a complete, contiguous target sample",
   assert.equal(result.rows.length, 4500);
 });
 
+test("accepts the actual MCP payload envelope and calls the Binance Spot kline tool contract", async () => {
+  const now = 2_000_000_000_000;
+  const rows = candles(1000);
+  const calls = [];
+  const result = await history.load({
+    callTool: async (server, tool, input) => {
+      calls.push({ server, tool, input });
+      return { payload: rows };
+    },
+    server: "Binance", tool: "spot.klines", symbol: "BTCUSDT", now,
+    targetCandles: 1000, pageLimit: 1000, maxPages: 1
+  });
+  assert.equal(result.accepted, true);
+  assert.equal(result.rows.length, 1000);
+  assert.equal(calls.length, 1);
+  assert.equal(calls[0].server, "Binance");
+  assert.equal(calls[0].tool, "spot.klines");
+  assert.equal(calls[0].input.symbol, "BTCUSDT");
+  assert.equal(calls[0].input.interval, "4h");
+  assert.equal(calls[0].input.limit, 1000);
+  assert.equal(calls[0].input.endTime, Math.floor(now / history.INTERVAL_MS) * history.INTERVAL_MS - 1);
+});
+
 test("browser history starts at the last closed 4H candle and excludes the forming candle", async () => {
   const now = 2_000_000_000_000;
   const interval = history.INTERVAL_MS;
