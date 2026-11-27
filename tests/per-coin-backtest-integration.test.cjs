@@ -120,3 +120,10 @@ test("dashboard verdict and action items respect the shared trading permission",
   assert.match(html, /if\(permission\.key==="clear"\) for\(const s of act\.slice\(0,3\)\)/);
   assert.match(html, /smcN=\(smcRows\(\)\|\|\[\]\)\.filter\(r=>\{const lane=laneOf\(r\)/);
 });
+
+test("market and watchlist labels distinguish screening, proximity and signal lifecycle states", () => {
+  assert.match(html, /24h vol \(USDT\)<\/th><th class="l">RS filter<\/th>/);
+  assert.match(html, /Distance to zone<\/th><th class="l">Zone proximity<\/th>/);
+  assert.match(html, /<th class="l">Signal state<\/th>/);
+  assert.match(html, /<span class="label">Signal state<\/span>/);
+});
