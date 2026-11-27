@@ -119,7 +119,7 @@ test("does not mutate source rows", () => {
 });
 
 test("does not silently repair malformed rows", () => {
-  const rows = [candle(undefined, { 2: "8" }), candle()];
+  const rows = [candle(NOW - 2 * HOUR, { 2: "8" }), candle(NOW - HOUR)];
   const result = validateKlines(rows, { now: NOW });
   assert.equal(result.status, "INVALID");
   assert.equal(result.stats.rejectedCount, 1);
