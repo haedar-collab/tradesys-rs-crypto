@@ -2364,21 +2364,37 @@ document.addEventListener("click",e=>{ const b=e.target.closest("[data-lane]"); 
 let PVSYM=null;
 /* ---------- per-coin backtest (information only): every playbook on ~2 years of 4H candles of the coin ---------- */
 const CBT={}, CBTBUSY={}; let BTCBT=null;
-async function btcForBt(){ if(BTCBT&&Date.now()-BTCBT.at<6*36e5) return BTCBT; const p=E.prepare(E.series(await provider.klines("BTCUSDT","1d",1000)),CFG); BTCBT={p,tl:E.regimeTimeline(p,CFG),at:Date.now()}; return BTCBT; }
+async function strictBacktestHistory(sym,interval,targetCandles){
+  return window.TradesysPerCoinBacktestHistory.load({
+    callTool:(server,tool,input)=>mcp.callTool(server,tool,input),
+    server:BIN,tool:TOOLS.klines,symbol:sym,interval,targetCandles,
+    pageLimit:1000,maxPages:Math.ceil(targetCandles/1000),maxRetries:1
+  });
+}
+async function btcForBt(){
+  if(BTCBT&&Date.now()-BTCBT.at<6*36e5) return BTCBT;
+  const history=await strictBacktestHistory("BTCUSDT","1d",1000);
+  if(!history.accepted) throw new Error(history.reason||"BTC benchmark daily history failed strict validation");
+  const p=E.prepare(E.series(history.rows),CFG);
+  BTCBT={p,tl:E.regimeTimeline(p,CFG),at:Date.now(),history:history.pagination};
+  return BTCBT;
+}
 async function runCoinBt(sym){
   if(CBTBUSY[sym]||!mcp) return; CBTBUSY[sym]=true; paintBt(sym);
   try{
     const b=await btcForBt();
-    const history=await window.TradesysPerCoinBacktestHistory.load({
-      callTool:(server,tool,input)=>mcp.callTool(server,tool,input),
-      server:BIN, tool:TOOLS.klines, symbol:sym
-    });
+    const history=await strictBacktestHistory(sym,"4h",4500);
     if(!history.accepted){
-      CBT[sym]={error:history.reason||"Strict historical data validation failed",historyStatus:history.status,history:history.pagination,at:Date.now()};
+      CBT[sym]={error:history.reason||"Strict 4H history validation failed",historyStatus:history.status,history:history.pagination,at:Date.now()};
+      return;
+    }
+    const daily=await strictBacktestHistory(sym,"1d",1000);
+    if(!daily.accepted){
+      CBT[sym]={error:daily.reason||"Strict 1D history validation failed",historyStatus:daily.status,history:daily.pagination,at:Date.now()};
       return;
     }
     const r4=history.rows;
-    const d=E.prepare(E.series(await provider.klines(sym,"1d",1000)),CFG), reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
+    const d=E.prepare(E.series(daily.rows),CFG), reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
     await new Promise(r=>setTimeout(r,0));
     CBT[sym]=E.backtestCoin(r4,d,b.p,b.tl,sym,reg,CFG);
   }catch(e){ CBT[sym]={error:(e&&e.message)||"backtest failed",at:Date.now()}; }
@@ -2393,18 +2409,42 @@ function poolUniverse(){ const rs=((LAST&&LAST.rs)||(AUTORES&&AUTORES.rs)||[]).f
 async function ensurePool(){
   if(!POOLLOADED){ POOLLOADED=true; try{ if(db){ const d=await db.doc("meta/pooledbt").get(); if(d.exists) POOL=d.data(); } }catch(e){} paintPool(); }
   const reg=((LAST&&LAST.regime)||(AUTORES&&AUTORES.regime)||{}).reg||"Sideways";
-  if(POOL&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
+  if(POOL&&POOL.validationVersion===2&&Date.now()-POOL.at<24*36e5&&POOL.regime===reg&&POOL.minN===(CFG.btMinSample||100)) return;
   runPool(reg);
 }
 async function runPool(reg){
   if(POOLJOB||!mcp) return; const syms=poolUniverse(); if(syms.length<10) return;
-  POOLJOB={done:0,total:syms.length}; paintPool();
+  POOLJOB={done:0,total:syms.length,accepted:0,rejected:[]}; paintPool();
   try{
     const b=await btcForBt(), byCoin={}; let from=Infinity,to=0,idx=0;
-    const worker=async()=>{ while(idx<syms.length){ const sym=syms[idx++]; try{ const [r4,r1]=await Promise.all([provider.klines(sym,"4h",1000),provider.klines(sym,"1d",400)]); await new Promise(r=>setTimeout(r,0)); byCoin[sym]=E.coinTrades(r4,E.prepare(E.series(r1),CFG),b.p,b.tl,sym,CFG); from=Math.min(from,+r4[0][0]); to=Math.max(to,+r4[r4.length-1][6]); }catch(e){} POOLJOB.done++; if(POOLJOB.done%4===0) paintPool(); } };
+    const worker=async()=>{ while(idx<syms.length){
+      const sym=syms[idx++];
+      try{
+        const [h4,h1]=await Promise.all([strictBacktestHistory(sym,"4h",1000),strictBacktestHistory(sym,"1d",400)]);
+        if(!h4.accepted||!h1.accepted){
+          const failed=!h4.accepted?h4:h1, failedInterval=!h4.accepted?"4h":"1d";
+          POOLJOB.rejected.push({sym,interval:failedInterval,status:failed.status,reason:failed.reason});
+        }else{
+          await new Promise(r=>setTimeout(r,0));
+          byCoin[sym]=E.coinTrades(h4.rows,E.prepare(E.series(h1.rows),CFG),b.p,b.tl,sym,CFG);
+          POOLJOB.accepted++;
+          from=Math.min(from,+h4.rows[0][0]); to=Math.max(to,+h4.rows[h4.rows.length-1][6]);
+        }
+      }catch(e){ POOLJOB.rejected.push({sym,interval:"fetch",status:"ERROR",reason:(e&&e.message)||String(e)}); }
+      POOLJOB.done++; if(POOLJOB.done%4===0||POOLJOB.done===POOLJOB.total) paintPool();
+    } };
     await Promise.all([worker(),worker(),worker()]);
-    if(Object.keys(byCoin).length>=10){ POOL={at:Date.now(),regime:reg,coins:Object.keys(byCoin).length,from,to,minN:CFG.btMinSample||100,rows:E.poolStats(byCoin,reg,CFG)}; try{ if(db) await db.doc("meta/pooledbt").set(JSON.parse(JSON.stringify(POOL))); }catch(e){} }
-  }catch(e){} finally{ POOLJOB=null; paintPool(); }
+    if(Object.keys(byCoin).length>=10){
+      POOL={at:Date.now(),validationVersion:2,regime:reg,coins:Object.keys(byCoin).length,requested:syms.length,
+        accepted:POOLJOB.accepted,rejected:POOLJOB.rejected.length,rejectionDetails:POOLJOB.rejected.slice(0,80),
+        from,to,minN:CFG.btMinSample||100,rows:E.poolStats(byCoin,reg,CFG)};
+      try{ if(db) await db.doc("meta/pooledbt").set(JSON.parse(JSON.stringify(POOL))); }catch(e){}
+    }else{
+      POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:syms.length,accepted:POOLJOB.accepted,
+        rejected:POOLJOB.rejected.length,rejectionDetails:POOLJOB.rejected.slice(0,80),error:"Fewer than 10 coins passed strict 4H and 1D history validation",minN:CFG.btMinSample||100,rows:[]};
+    }
+  }catch(e){ POOL={at:Date.now(),validationVersion:2,regime:reg,coins:0,requested:syms.length,accepted:0,rejected:syms.length,error:(e&&e.message)||String(e),minN:CFG.btMinSample||100,rows:[]}; }
+  finally{ POOLJOB=null; paintPool(); }
 }
 function paintPool(){ document.querySelectorAll("[data-poolbox]").forEach(el=>{ el.innerHTML=poolInner(el.dataset.poolbox); if(LANG==="id") try{ i18nTree(el); }catch(e){} }); }
 function poolInner(sym){
@@ -2412,12 +2452,14 @@ function poolInner(sym){
   const head=t=>`<div class="bt-head"><span class="label">Pooled backtest · all scanned coins</span><span class="muted small">${t}</span></div>`;
   if(!POOL&&POOLJOB) return head("")+`<p class="muted small">Running the same rules on ${POOLJOB.total} liquid coins… ${POOLJOB.done}/${POOLJOB.total}</p><div class="bar"><i style="width:${Math.round(100*POOLJOB.done/POOLJOB.total)}%"></i></div>`;
   if(!POOL) return head("")+`<p class="muted small">${mcp?"Pooled backtest starts after the scan.":"Needs the Binance connector: open the dashboard in claude.ai."}</p>`;
+  if(POOL.error) return head("")+`<p class="muted small">Pooled backtest unavailable: ${esc(POOL.error)}</p><p class="muted small">Strict history: ${Number(POOL.accepted)||0} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||0} requested. Minimum 10 valid coins.</p>`;
   const coin=CBT[sym]&&CBT[sym].rows?Object.fromEntries(CBT[sym].rows.map(r=>[r.playbook,r])):{};
   const ver=v=>v.level==="ok"?`<span class="chip good">Positive</span>`:v.level==="block"?`<span class="chip crit">Negative</span>`:`<span class="chip warn">${esc(v.text)}</span>`;
   const rows=POOL.rows.map(r=>{ const a=r.all, s=r.same, c=coin[r.playbook], diff=c&&c.all.n&&a.n?c.all.avgR-a.avgR:null;
     return `<tr${r.playbook==="smc"||r.active?' class="bt-hl"':""}><td class="l"><b>${esc(r.name)}</b>${r.active?` <span class="chip good">active in ${esc(E.regName(POOL.regime))}</span>`:""}</td><td class="num">${a.n}</td><td class="num">${r.coins}</td><td class="num">${a.n?Math.round(a.winRate*100)+"%":"–"}</td><td class="num ${a.avgR>=0?"pos":"neg"}">${a.n?sR(a.avgR):"–"}</td><td class="num">${a.n?pf(a.pf):"–"}</td><td class="num muted">${s.n?`${s.n} · ${sR(s.avgR)}`:"–"}</td><td class="num ${diff==null?"":diff>=0?"pos":"neg"}">${diff==null?"–":sR(diff)}</td><td>${btSpark(a.curve)}</td><td class="l">${ver(r.verdict)}</td></tr>`; }).join("");
-  return head(`${POOL.coins} coins · ${d(POOL.from)} – ${d(POOL.to)} · updated ${esc(wib(POOL.at))}${POOLJOB?` · refreshing ${POOLJOB.done}/${POOLJOB.total}`:""}`)+
+  return head(`${POOL.coins} valid coins · ${d(POOL.from)} – ${d(POOL.to)} · updated ${esc(wib(POOL.at))}${POOLJOB?` · refreshing ${POOLJOB.done}/${POOLJOB.total}`:""}`)+
     `<div class="tbl-wrap"><table class="wide bt-table"><thead><tr><th class="l">Playbook</th><th>Trades</th><th>Coins</th><th>Win rate</th><th>Avg R/trade</th><th>Profit factor</th><th>Same regime (${esc(E.regName(POOL.regime))})</th><th>This coin vs pool</th><th class="l">Equity (R)</th><th class="l">Verdict</th></tr></thead><tbody>${rows}</tbody></table></div>`+
+    `<p class="foot" style="margin:8px 0 0">Strict history: ${Number(POOL.accepted)||POOL.coins} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||POOL.coins} requested. Rejected history is never passed to the engine.</p>`+
     `<p class="foot" style="margin:8px 0 0"><span data-l="en">A verdict needs at least ${POOL.minN} trades; below that the row reads "Sample n of ${POOL.minN}". "This coin vs pool" compares the average R per trade on this coin with the pool. Equity curves add trades in date order across coins, so they overlap in time. Backtests are information only and never change a signal.</span><span data-l="id">Kesimpulan butuh minimal ${POOL.minN} trade; di bawah itu tertulis "Sampel n dari ${POOL.minN}". "Koin ini vs gabungan" membandingkan rata-rata R per trade di koin ini dengan gabungan. Kurva ekuitas menjumlahkan trade berurutan tanggal dari semua koin, jadi waktunya bisa tumpang tindih. Backtest hanya informasi dan tidak pernah mengubah sinyal.</span></p>`;
 }
 function paintBt(sym){ document.querySelectorAll(`[data-btbox="${CSS.escape(sym)}"]`).forEach(el=>{ el.innerHTML=btInner(sym); if(LANG==="id") try{ i18nTree(el); }catch(e){} }); paintPool(); }
