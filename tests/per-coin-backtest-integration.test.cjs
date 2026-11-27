@@ -113,3 +113,10 @@ test("circuit breaker is part of the shared trading permission and blocks taking
   assert.match(html, /if\(LAST&&LAST\.brake\) return "Circuit breaker active: BTC market risk blocks new entries"/);
   assert.match(html, /const can=!ps\.halted&&!ps\.dayFull&&!\(LAST&&LAST\.brake\)/);
 });
+
+test("dashboard verdict and action items respect the shared trading permission", () => {
+  assert.match(html, /const permission=planState\(ps\)/);
+  assert.match(html, /if\(permission\.tone==="stop"\)/);
+  assert.match(html, /if\(permission\.key==="clear"\) for\(const s of act\.slice\(0,3\)\)/);
+  assert.match(html, /smcN=\(smcRows\(\)\|\|\[\]\)\.filter\(r=>\{const lane=laneOf\(r\)/);
+});
