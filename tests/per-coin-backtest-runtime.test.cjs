@@ -24,7 +24,7 @@ function harness(history) {
     setTimeout: callback => { callback(); return 0; },
     CBT: {},
     CBTBUSY: {},
-    BTCBT: null,
+    BTCBT: { p: { btc: true }, tl: { timeline: true }, at: Date.now() },
     mcp: {
       callTool: async (...args) => {
         calls.adapter.push(args);
