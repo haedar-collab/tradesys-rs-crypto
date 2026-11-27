@@ -67,7 +67,7 @@ The pooled backtest fetches only one page per symbol (1,000 4H and 400 Daily) an
 
 1. Define one canonical interval registry for currently used fixed intervals: `15m`, `1h`, `4h`, and `1d`. Do not infer `1M` from a fixed millisecond duration.
 2. Add a pure historical-page merger that:
-   - accepts pages in any retrieval order but does not silently sort malformed rows;
+   - accepts pages in a documented oldest-to-newest order; the fetch orchestration may retrieve newest-to-oldest and reverse only the page list, never candle rows;
    - validates each page;
    - validates chronological continuity after concatenation;
    - rejects duplicate open times, overlapping pages, gaps, malformed rows, and non-progressing cursors;
