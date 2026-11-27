@@ -629,7 +629,7 @@ button.danger{background:var(--crit);color:#fff;border-color:var(--crit)}
       <section class="panel"><div class="panel-head"><h2>Latest alerts</h2><button class="link" data-goto="dashboard" data-scroll="h-log">View all</button></div><div id="dashLog" class="log"></div></section>
     </div>
     <section class="panel" id="poolPanel" aria-labelledby="h-pool" style="margin-top:14px">
-      <div class="panel-head"><div><h2 id="h-pool">Pooled Backtest</h2><span class="muted small" id="poolMeta">Strict history validation · minimum 10 valid coins</span></div><button type="button" class="sm" id="poolRefresh">Refresh pool</button></div>
+      <div class="panel-head"><div><h2 id="h-pool">Pooled Backtest</h2><span class="muted small" id="poolMeta">Up to 80 liquid USDT pairs · strict 4H + 1D · minimum 10 valid coins</span></div><button type="button" class="sm" id="poolRefresh">Refresh pool</button></div>
       <div data-poolbox="" id="poolBox"><div class="empty">Pooled Backtest starts automatically after a successful scan.</div></div>
     </section>
   </div>
@@ -2458,7 +2458,7 @@ document.addEventListener("click",e=>{ const b=e.target.closest("#poolRefresh");
 function paintPool(){ document.querySelectorAll("[data-poolbox]").forEach(el=>{ el.innerHTML=poolInner(el.dataset.poolbox); if(LANG==="id") try{ i18nTree(el); }catch(e){} }); }
 function poolInner(sym){
   const d=t=>new Date(t).toLocaleDateString("en-GB",{day:"2-digit",month:"short",year:"numeric",timeZone:"Asia/Jakarta"}), sR=v=>(v>=0?"+":"")+v.toFixed(2)+"R", pf=v=>v==null||!isFinite(v)?(v===0?"0.00":"∞"):v.toFixed(2);
-  const head=t=>`<div class="bt-head"><span class="label">Pooled backtest · all scanned coins</span><span class="muted small">${t}</span></div>`;
+  const head=t=>`<div class="bt-head"><span class="label">Pooled backtest · liquid USDT universe</span><span class="muted small">${t}</span></div>`;
   if(!POOL&&POOLJOB) return head("")+`<p class="muted small">Validating strict 4H + 1D history · ${POOLJOB.done}/${POOLJOB.total} processed · ${POOLJOB.accepted} accepted · ${POOLJOB.rejected.length} rejected</p><div class="bar"><i style="width:${Math.round(100*POOLJOB.done/POOLJOB.total)}%"></i></div>`;
   if(!POOL) return head("")+`<p class="muted small">${mcp?"Waiting for a successful market scan to select the pool universe.":"Binance connector unavailable in this view; open the dashboard in claude.ai."}</p>`;
   if(POOL.error) return head("")+`<p class="muted small">Pooled backtest unavailable: ${esc(POOL.error)}</p><p class="muted small">Strict history: ${Number(POOL.accepted)||0} accepted · ${Number(POOL.rejected)||0} rejected / ${Number(POOL.requested)||0} requested. Minimum 10 valid coins.</p>`+(POOL.rejectionDetails&&POOL.rejectionDetails.length?`<details><summary>Rejected history details (${POOL.rejectionDetails.length})</summary><div class="tbl-wrap"><table><thead><tr><th class="l">Coin</th><th>Interval</th><th>Status</th><th class="l">Reason</th></tr></thead><tbody>${POOL.rejectionDetails.map(x=>`<tr><td>${esc(x.sym)}</td><td>${esc(x.interval)}</td><td>${esc(x.status)}</td><td class="l">${esc(x.reason)}</td></tr>`).join("")}</tbody></table></div></details>`:"");
