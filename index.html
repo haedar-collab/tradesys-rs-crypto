@@ -2592,7 +2592,7 @@ function renderGuide(){
   if(reg) gates.push(reg==="Downtrend"?{k:"warn",t:"Regime: Downtrend",d:"Only RS leaders may be entered, at 50% size."}:reg==="Capitulation"?{k:"warn",t:"Regime: Capitulation",d:"Scale in only on signals; small size."}:{k:"good",t:`Regime: ${E.regName(reg)}`,d:"Normal playbook for this regime."});
   gates.push(act.length?{k:"good",t:`${act.length} entry signal${act.length>1?"s":""} live`,d:act.map(s=>`${s.sym.replace("USDT","")} at ${fp(s.entry)} (valid until ${wib(s.validUntil)})`).join(" · ")}:{k:"muted",t:"No entry signal live",d:"Wait for a 🟢 NEW SIGNAL alert."});
   $("gGates").innerHTML=gates.map(g=>`<li class="g-${g.k}"><span class="dot" aria-hidden="true"></span><div><b>${esc(g.t)}</b><div class="small muted">${esc(g.d)}</div></div></li>`).join("");
-  const can=!ps.halted&&!ps.dayFull&&!(LAST&&LAST.brake);
+  const can=pstate.key==="clear";
   $("gVerdict").innerHTML=`<div class="vbig ${!can?"vb-stop":act.length?"vb-go":"vb-wait"}" style="margin-bottom:12px"><b>${!can?"NO NEW ENTRIES":act.length?(evr&&evr.level==="high"?"ENTER · REDUCED SIZE":"ENTER: SIGNAL LIVE"):"WAIT"}</b><span>${!can?"The trading plan blocks new positions.":act.length?"Follow the signal card: entry, SL and TP as shown, after the checklist.":"No coin has reached Enter now. Nothing to buy until a 🟢 NEW SIGNAL arrives."}</span></div>`;
   // pipeline
   const rows=smcRows()||[];
@@ -2787,7 +2787,7 @@ document.addEventListener("click",e=>{
 $("btAll").addEventListener("click",async()=>{ const act=SIGNALS.filter(s=>effStatus(s)==="baru"||s.status==="diambil"); if(!act.length){ $("btAllMsg").textContent="No active signals."; return; } $("btAll").disabled=true; for(let k=0;k<act.length;k++){ $("btAllMsg").textContent=`Backtest ${k+1}/${act.length}…`; await runBt(act[k].id); } $("btAllMsg").textContent=`Done: ${act.length} signal${act.length>1?"s":""}`; $("btAll").disabled=false; });
 
 function sigVerdict(s){ return s?E.btVerdict(BTRES[s.id]||s.btSignal,CFG):null; }
-function takeBlock(id){ const ps=planNow(); if(ps.halted) return "Trading halted by the trading plan"; if(LAST&&LAST.brake) return "Circuit breaker active: BTC market risk blocks new entries"; if(ps.dayFull) return `Daily limit of ${PLAN.maxTradesPerDay} new positions reached`;
+function takeBlock(id){ const state=planState(planNow()); if(state.key!=="clear") return state.detail;
   const n=checklistItems().length, c=CHECKED[id]?CHECKED[id].size:0; return c<n?`Tick ${n-c} more checklist item${n-c>1?"s":""}`:""; }
 function canTake(id){ return takeBlock(id)===""; }
 function renderPlanBar(){
