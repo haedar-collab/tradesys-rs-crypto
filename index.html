@@ -2249,7 +2249,7 @@ function renderToday(){
   else if(reg==="Kapitulasi"){ sub="Capitulation phase. Scale in only when a signal fires."; }
   $("todayVerdict").className="vbig "+cls; $("todayVerdict").innerHTML=`<b>${esc(head)}</b><span>${esc(sub)}</span>`;
   const items=[];
-  if(!ps.halted) for(const s of act.slice(0,3)) items.push({t:`Buy ${s.sym.replace("USDT","")} at ${fp(s.entry)}`,d:`SL ${fp(s.stop)} · TP1 ${fp(s.tp1)} · TP2 ${fp(s.tp2)} · ${fusd(s.size)} USDT`,go:"sinyal",btn:"Signal"});
+  if(permission.key==="clear") for(const s of act.slice(0,3)) items.push({t:`Buy ${s.sym.replace("USDT","")} at ${fp(s.entry)}`,d:`SL ${fp(s.stop)} · TP1 ${fp(s.tp1)} · TP2 ${fp(s.tp2)} · ${fusd(s.size)} USDT`,go:"sinyal",btn:"Signal"});
   const live=Object.fromEntries(((LAST&&LAST.positions)||[]).map(p=>[p.id,livePos(p)])); for(const j of SIGNALS) if(j.status==="diambil"&&!live[j.id]&&LIVE[j.sym]!=null) live[j.id]=livePos(Object.assign({},j,{price:null}));
   for(const s of open){ const p=live[s.id], c=s.sym.replace("USDT","");
     if(!p){ items.push({t:`Hold ${c}`,d:`SL ${fp(s.stop)} · TP1 ${fp(s.tp1)} · scan for the latest price`,go:"risiko",btn:"Position"}); continue; }
