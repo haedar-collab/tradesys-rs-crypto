@@ -35,7 +35,7 @@ test("per-coin backtest blocks non-COMPLETE history before calling the engine", 
 test("per-coin history uses the registered Binance Spot klines adapter", () => {
   assert.match(html, /const BIN = "Binance"/);
   assert.match(html, /"Binance"\s*:\s*\{\s*"spot\.klines"\s*:\s*i\s*=>\s*binance\(\s*"\/klines\?/);
-  assert.match(html, /server:BIN, tool:TOOLS\.klines, symbol:sym/);
+  assert.match(html, /server:BIN,tool:TOOLS\.klines,symbol:sym/);
 });
 
 test("per-coin UI displays strict-history rejection diagnostics", () => {
