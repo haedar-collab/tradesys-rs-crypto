@@ -93,7 +93,7 @@ test("pooled backtest starts automatically after a successful scan", () => {
 test("Analysis, Dashboard, Watchlist and Entry Guide use the same setup action classifier", () => {
   assert.match(html, /function stepOf\(r\)/);
   assert.match(html, /function laneOf\(r\)/);
-  assert.match(html, /const counts=Object\.fromEntries\(LANES\.map\(\[k\]\s*=>\[k,rows\.filter\(r=>laneOf\(r\)===k\)\.length\]\)\)/);
+  assert.match(html, /const counts=Object\.fromEntries\(LANES\.map\(\(\[k\]\)=>\[k,rows\.filter\(r=>laneOf\(r\)===k\)\.length\]\)\)/);
   assert.match(html, /const \[action,cl\]=stepOf\(rowOfA\(a\)\)/);
   assert.match(html, /const step=r\?stepOf\(r\):null, lane=r\?laneOf\(r\):"none"/);
   assert.match(html, /const \[st,cl\]=stepOf\(r\)/);
