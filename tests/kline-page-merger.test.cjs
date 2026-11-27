@@ -2,7 +2,7 @@
 
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { mergeKlinePages, nextOlderEndTime, ERROR_CODES } = require("../lib/kline-page-merger.cjs");
+const { mergeKlinePages, nextOlderEndTime, assertOlderCursorProgress, ERROR_CODES } = require("../lib/kline-page-merger.cjs");
 
 const NOW = 100_000_000;
 const HOUR = 60 * 60 * 1000;
@@ -174,4 +174,13 @@ test("calculates the previous-page cursor as oldestOpenTime minus one", () => {
 test("rejects unsafe cursor timestamps", () => {
   assert.throws(() => nextOlderEndTime(-1), TypeError);
   assert.throws(() => nextOlderEndTime(Number.MAX_SAFE_INTEGER + 1), TypeError);
+});
+
+test("accepts a strictly decreasing backward-pagination cursor", () => {
+  assert.equal(assertOlderCursorProgress(9_999, 8_999), true);
+});
+
+test("rejects a cursor that does not move backward", () => {
+  assert.throws(() => assertOlderCursorProgress(9_999, 9_999), RangeError);
+  assert.throws(() => assertOlderCursorProgress(9_999, 10_000), RangeError);
 });
